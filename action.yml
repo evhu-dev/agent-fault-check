@@ -1,0 +1,148 @@
+name: "agent-fault-check"
+description: "Chaos-test AI agents for duplicate writes, broken rollbacks, and tool-call loops before merging."
+author: "evhu-dev"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  spec-path:
+    description: "Path to chaos-spec.yaml"
+    required: false
+    default: "chaos-spec.yaml"
+  version:
+    description: "Pinned afc release tag (e.g. v0.1.0)"
+    required: true
+  report-mode:
+    description: "Report format: console (public OSS release) or junit, sarif, both (requires commercial release-repository)"
+    required: false
+    default: "console"
+  license-key:
+    description: "Optional Polar license key (from trusted secrets only; requires commercial release-repository)"
+    required: false
+    default: ""
+  release-repository:
+    description: "Optional GitHub repository (owner/repo) hosting commercial Pro release binaries (e.g. evhu-dev/agent-fault-check-releases); defaults to public OSS repository"
+    required: false
+    default: ""
+  release-token:
+    description: "Optional GitHub token if release-repository is private"
+    required: false
+    default: ""
+
+outputs:
+  exit-code:
+    description: "Exit code returned by afc run (0=pass, 1=fail, 2=error)"
+    value: ${{ steps.run-afc.outputs.exit_code }}
+  sarif-file:
+    description: "Path to generated SARIF file if requested"
+    value: ${{ steps.run-afc.outputs.sarif_file }}
+  junit-file:
+    description: "Path to generated JUnit XML file if requested"
+    value: ${{ steps.run-afc.outputs.junit_file }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download and verify afc binary
+      shell: bash
+      env:
+        AFC_VERSION: ${{ inputs.version }}
+        AFC_ACTION_REPO: ${{ github.action_repository }}
+        AFC_RELEASE_REPO: ${{ inputs.release-repository }}
+        AFC_RELEASE_TOKEN: ${{ inputs.release-token }}
+        AFC_REPORT_MODE: ${{ inputs.report-mode }}
+      run: |
+        set -euo pipefail
+        if [ "${AFC_REPORT_MODE}" != "console" ] && [ -z "${AFC_RELEASE_REPO}" ]; then
+          echo "report-mode '${AFC_REPORT_MODE}' is not supported by the public OSS release; pass 'release-repository' pointing to the commercial Pro release or use 'report-mode: console'." >&2
+          exit 2
+        fi
+        DOWNLOAD_REPO="${AFC_RELEASE_REPO:-${AFC_ACTION_REPO}}"
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64) GOARCH="amd64" ;;
+          arm64|aarch64) GOARCH="arm64" ;;
+          *) echo "Unsupported arch: $ARCH" >&2; exit 2 ;;
+        esac
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        BIN_PREFIX="afc"
+        if [ -n "${AFC_RELEASE_REPO}" ]; then
+          BIN_PREFIX="afc-pro"
+        fi
+        TARBALL="${BIN_PREFIX}_${AFC_VERSION#v}_${OS}_${GOARCH}.tar.gz"
+        BASE_URL="https://github.com/${DOWNLOAD_REPO}/releases/download/${AFC_VERSION}"
+        TMPDIR=$(mktemp -d)
+        trap 'rm -rf "$TMPDIR"' EXIT
+        CURL_AUTH=()
+        if [ -n "${AFC_RELEASE_TOKEN}" ]; then
+          CURL_AUTH=(-H "Authorization: Bearer ${AFC_RELEASE_TOKEN}")
+        fi
+        curl -fsSL "${CURL_AUTH[@]}" "${BASE_URL}/${TARBALL}" -o "${TMPDIR}/${TARBALL}"
+        curl -fsSL "${CURL_AUTH[@]}" "${BASE_URL}/checksums.txt" -o "${TMPDIR}/checksums.txt"
+        (
+          cd "${TMPDIR}"
+          CHECKSUM_LINE=$(awk -v f="${TARBALL}" '$2 == f { print; found=1 } END { exit !found }' checksums.txt)
+          if command -v sha256sum >/dev/null 2>&1; then
+            printf '%s\n' "${CHECKSUM_LINE}" | sha256sum -c -
+          else
+            printf '%s\n' "${CHECKSUM_LINE}" | shasum -a 256 -c -
+          fi
+        )
+        tar -xzf "${TMPDIR}/${TARBALL}" -C "${TMPDIR}" afc
+        BIN_DIR="${RUNNER_TEMP}/afc-bin"
+        mkdir -p "${BIN_DIR}"
+        install -m 0755 "${TMPDIR}/afc" "${BIN_DIR}/afc"
+        echo "${BIN_DIR}" >> "$GITHUB_PATH"
+
+    - name: Run agent-fault-check
+      id: run-afc
+      shell: bash
+      env:
+        AFC_LICENSE_KEY: ${{ inputs.license-key }}
+        AFC_SPEC_PATH: ${{ inputs.spec-path }}
+        AFC_REPORT_MODE: ${{ inputs.report-mode }}
+      run: |
+        set +e
+        ARGS=(run --spec "${AFC_SPEC_PATH}")
+        SARIF_PATH=""
+        JUNIT_PATH=""
+        case "${AFC_REPORT_MODE}" in
+          console)
+            ;;
+          sarif)
+            SARIF_PATH="afc-results.sarif"
+            ARGS+=(--sarif "${SARIF_PATH}")
+            ;;
+          junit)
+            JUNIT_PATH="afc-results.xml"
+            ARGS+=(--junit "${JUNIT_PATH}")
+            ;;
+          both)
+            SARIF_PATH="afc-results.sarif"
+            JUNIT_PATH="afc-results.xml"
+            ARGS+=(--sarif "${SARIF_PATH}" --junit "${JUNIT_PATH}")
+            ;;
+          *)
+            echo "Invalid report-mode: ${AFC_REPORT_MODE} (expected console, junit, sarif, or both)" >&2
+            echo "exit_code=2" >> "$GITHUB_OUTPUT"
+            echo "sarif_file=" >> "$GITHUB_OUTPUT"
+            echo "junit_file=" >> "$GITHUB_OUTPUT"
+            exit 2
+            ;;
+        esac
+        afc "${ARGS[@]}"
+        RC=$?
+        OUT_SARIF=""
+        OUT_JUNIT=""
+        if [ -n "${SARIF_PATH}" ] && [ -f "${SARIF_PATH}" ]; then
+          OUT_SARIF="${SARIF_PATH}"
+        fi
+        if [ -n "${JUNIT_PATH}" ] && [ -f "${JUNIT_PATH}" ]; then
+          OUT_JUNIT="${JUNIT_PATH}"
+        fi
+        echo "exit_code=${RC}" >> "$GITHUB_OUTPUT"
+        echo "sarif_file=${OUT_SARIF}" >> "$GITHUB_OUTPUT"
+        echo "junit_file=${OUT_JUNIT}" >> "$GITHUB_OUTPUT"
+        exit "${RC}"
