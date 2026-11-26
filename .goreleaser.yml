@@ -1,0 +1,60 @@
+version: 2
+
+project_name: afc
+
+before:
+  hooks:
+    - go mod verify
+
+builds:
+  - id: afc
+    main: ./cmd/afc
+    binary: afc
+    flags:
+      - -trimpath
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/agent-fault-check/afc/internal/cli.Version={{.Version}}
+      - -X github.com/agent-fault-check/afc/internal/cli.Commit={{.ShortCommit}}
+      - -X github.com/agent-fault-check/afc/internal/license.UpgradeURL={{ if index .Env "AFC_UPGRADE_URL" }}{{ .Env.AFC_UPGRADE_URL }}{{ else }}https://polar.sh/evhu-dev{{ end }}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: git
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Improvements
+      order: 2
+  filters:
+    exclude:
+      - '(?i)^merge '
+      - '(?i)^ci(\([^)]*\))?:'
+      - '(?i)^chore(\([^)]*\))?:'
+      - '(?i)^test(\([^)]*\))?:'
+      - '(?i)^docs(\([^)]*\))?:'
+      - '(?i)^style(\([^)]*\))?:'
+      - '(?i)^build(\([^)]*\))?:'
+      - '(?i)^refactor(\([^)]*\))?:'
