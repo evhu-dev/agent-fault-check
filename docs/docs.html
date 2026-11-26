@@ -341,10 +341,9 @@ afc run --spec chaos-spec.yaml --verbose</code></pre>
             <tr><th>Variable</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>AFC_PROXY_URL</code></td><td>Base URL of the local fault-injection proxy (e.g. <code>http://127.0.0.1:54321</code>). Point your agent's tool API client here.</td></tr>
+            <tr><td><code>TOOL_API_BASE_URL</code></td><td>Base URL of the local fault-injection proxy (e.g. <code>http://127.0.0.1:54321</code>). Point your agent's tool API client here.</td></tr>
             <tr><td><code>AFC_RUN_ID</code></td><td>Unique ID generated per scenario execution. Use it to scope test rows/keys cleanly across parallel runs.</td></tr>
-            <tr><td><code>AFC_SCENARIO_ID</code></td><td>The current scenario's <code>id</code> from <code>chaos-spec.yaml</code>.</td></tr>
-            <tr><td><code>AFC_PROMPT</code></td><td>The scenario's <code>prompt</code> string.</td></tr>
+            
           </tbody>
         </table>
       </section>
@@ -488,7 +487,7 @@ scenarios:
             <tr>
               <td><code>http_state_count</code></td>
               <td>Pro / Team</td>
-              <td>Queries an HTTP state endpoint returning <code>{"count": N}</code> and asserts exact <code>expected</code> count.</td>
+              <td>Queries an HTTP state endpoint returning a JSON integer (e.g. <code>1</code>) and asserts exact <code>expected</code> count.</td>
             </tr>
           </tbody>
         </table>
@@ -623,7 +622,7 @@ steps:
         <h3><code>AFC104: Declared fault never fired</code></h3>
         <p>Your agent did not send a request matching <code>faults[].match</code> through the proxy. Check:</p>
         <ul>
-          <li>Your agent's HTTP client reads <code>AFC_PROXY_URL</code> as its base URL (not hardcoded <code>localhost:8000</code>).</li>
+          <li>Your agent's HTTP client reads <code>TOOL_API_BASE_URL</code> as its base URL (not hardcoded <code>localhost:8000</code>).</li>
           <li><code>match.method</code> (e.g. <code>POST</code>), <code>match.path</code> (exact path without query string), and <code>match.call</code> (1-indexed) match what appears in the call timeline with <code>--verbose</code>.</li>
         </ul>
 
@@ -645,12 +644,12 @@ steps:
 
         <details open>
           <summary>Does agent-fault-check work with any AI agent framework or language?</summary>
-          <p>Yes. <code>afc</code> is completely framework- and language-agnostic. It launches your agent via <code>agent.argv</code> (Python, TypeScript/Node, Go, Java, etc.) and intercepts standard HTTP tool calls via <code>AFC_PROXY_URL</code>. It works with LangGraph, CrewAI, OpenAI Agents SDK, Anthropic SDK, AutoGen, or custom loops.</p>
+          <p>Yes. <code>afc</code> is completely framework- and language-agnostic. It launches your agent via <code>agent.argv</code> (Python, TypeScript/Node, Go, Java, etc.) and intercepts standard HTTP tool calls via <code>TOOL_API_BASE_URL</code>. It works with LangGraph, CrewAI, OpenAI Agents SDK, Anthropic SDK, AutoGen, or custom loops.</p>
         </details>
 
         <details>
           <summary>Does afc call my LLM or replace my LLM mocks?</summary>
-          <p>No. <code>afc</code> only proxies the HTTP tool APIs you point at <code>AFC_PROXY_URL</code>. You can run against a real LLM or a deterministic stubbed LLM depending on your CI budget.</p>
+          <p>No. <code>afc</code> only proxies the HTTP tool APIs you point at <code>TOOL_API_BASE_URL</code>. You can run against a real LLM or a deterministic stubbed LLM depending on your CI budget.</p>
         </details>
 
         <details>
