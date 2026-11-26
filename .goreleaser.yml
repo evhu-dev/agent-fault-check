@@ -24,7 +24,7 @@ builds:
       - -s -w
       - -X github.com/agent-fault-check/afc/internal/cli.Version={{.Version}}
       - -X github.com/agent-fault-check/afc/internal/cli.Commit={{.ShortCommit}}
-      - -X github.com/agent-fault-check/afc/internal/license.UpgradeURL={{ if index .Env "AFC_UPGRADE_URL" }}{{ .Env.AFC_UPGRADE_URL }}{{ else }}https://polar.sh/evhu-dev{{ end }}
+      - -X github.com/agent-fault-check/afc/internal/license.UpgradeURL={{ if index .Env "AFC_UPGRADE_URL" }}{{ .Env.AFC_UPGRADE_URL }}{{ else }}https://afc.evhu.net/#pricing{{ end }}
 
 archives:
   - id: default
