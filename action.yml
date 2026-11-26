@@ -2,10 +2,6 @@ name: "agent-fault-check"
 description: "Chaos-test AI agents for duplicate writes, broken rollbacks, and tool-call loops before merging."
 author: "evhu-dev"
 
-branding:
-  icon: "shield"
-  color: "blue"
-
 inputs:
   spec-path:
     description: "Path to chaos-spec.yaml"
