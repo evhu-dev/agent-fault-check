@@ -1,6 +1,6 @@
 # agent-fault-check (`afc`)
 
-**`agent-fault-check` (`afc`)** is a Go CLI and GitHub Action that chaos-tests AI agents against disposable **HTTP tool APIs** before code merges to production *(MCP-stdio transport is planned for a future release)*. It catches:
+**`agent-fault-check` (`afc`)** is a Go CLI and GitHub Action that chaos-tests AI agents against disposable **HTTP tool APIs** before code merges to production. It catches:
 - **Duplicate writes** when a tool call commits upstream and fails or times out on the response (`commit_then_fail`).
 - **Broken saga rollbacks** when a downstream step fails mid-workflow (`fail_before_upstream`).
 - **Malformed tool payloads & retry loops** (`malformed_json`, `operation_attempts`, `max_tool_calls`, and live `abort_after_tool_calls`).
@@ -83,7 +83,6 @@ Use the Action's `sarif-file` and `junit-file` outputs to locate reports in late
 | Postgres, `operation_attempts`, `max_tool_calls` | Included | Included | Included |
 | Redis & HTTP state assertion packs | — | Included | Included |
 | SARIF 2.1.0 PR annotations & JUnit XML | — | Included | Included |
-| Priority support & upcoming MCP-stdio / trace packs | — | — | Included |
 
 
 See [docs/SECURITY.md](docs/SECURITY.md) for CI trust boundaries and security controls.
