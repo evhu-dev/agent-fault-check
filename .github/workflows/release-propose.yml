@@ -1,0 +1,184 @@
+name: Propose Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Override version bump (auto uses Conventional Commits)"
+        type: choice
+        default: auto
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: release-propose-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Calculate next semantic version
+        id: calc
+        env:
+          BUMP_OVERRIDE: ${{ inputs.bump || 'auto' }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA=$(git rev-parse HEAD)
+          LAST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || true)
+
+          if [ -z "${LAST_TAG}" ]; then
+            LAST_TAG="v0.0.0"
+            RANGE="${HEAD_SHA}"
+          else
+            RANGE="${LAST_TAG}..${HEAD_SHA}"
+          fi
+
+          COMMIT_COUNT=$(git rev-list --count "${RANGE}")
+          if [ "${COMMIT_COUNT}" -eq 0 ]; then
+            echo "has_changes=false" >> "${GITHUB_OUTPUT}"
+            echo "No unreleased commits since ${LAST_TAG}."
+            exit 0
+          fi
+
+          # Determine semver bump from Conventional Commits unless overridden
+          BUMP="${BUMP_OVERRIDE}"
+          if [ "${BUMP}" = "auto" ]; then
+            BUMP="patch"
+            if git log "${RANGE}" --format='%s%n%b' | grep -Eq '(^BREAKING CHANGE:|^BREAKING-CHANGE:|^[a-z]+(\([^)]+\))?!:)'; then
+              BUMP="major"
+            elif git log "${RANGE}" --format='%s' | grep -Eq '^feat(\([^)]+\))?:'; then
+              BUMP="minor"
+            fi
+          fi
+
+          CLEAN_LAST="${LAST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${CLEAN_LAST}"
+          case "${BUMP}" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+            *)
+              echo "error: unsupported bump '${BUMP}'" >&2
+              exit 1
+              ;;
+          esac
+
+          NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          {
+            echo "has_changes=true"
+            echo "last_tag=${LAST_TAG}"
+            echo "next_tag=${NEXT_TAG}"
+            echo "bump=${BUMP}"
+            echo "head_sha=${HEAD_SHA}"
+            echo "commit_count=${COMMIT_COUNT}"
+          } >> "${GITHUB_OUTPUT}"
+
+          git log "${RANGE}" --no-merges --pretty=format:'- `%h` %s (%an)' > /tmp/release_commits.md
+          echo "Proposed release: ${NEXT_TAG} (${BUMP} bump from ${LAST_TAG}, ${COMMIT_COUNT} commits)"
+
+      - name: Ensure release-approval label exists
+        if: steps.calc.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "release-approval" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --color "0e8a16" \
+            --description "Pending owner approval to tag and publish a release" \
+            --force
+
+      - name: Create or update Release Approval Issue
+        if: steps.calc.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LAST_TAG: ${{ steps.calc.outputs.last_tag }}
+          NEXT_TAG: ${{ steps.calc.outputs.next_tag }}
+          BUMP: ${{ steps.calc.outputs.bump }}
+          HEAD_SHA: ${{ steps.calc.outputs.head_sha }}
+          COMMIT_COUNT: ${{ steps.calc.outputs.commit_count }}
+        run: |
+          set -euo pipefail
+          COMMITS=$(cat /tmp/release_commits.md)
+          TITLE="Release approval: ${NEXT_TAG}"
+
+          cat <<EOF > /tmp/issue_body.md
+          <!-- afc-release: sha=${HEAD_SHA} tag=${NEXT_TAG} last_tag=${LAST_TAG} -->
+          @evhu-dev — CI validation passed on \`main\`. A new release is ready for your approval.
+
+          ### Release Summary
+          - **Repository:** \`${GITHUB_REPOSITORY}\`
+          - **Previous version:** \`${LAST_TAG}\`
+          - **Proposed version:** \`${NEXT_TAG}\` (\`${BUMP}\` bump)
+          - **Target commit:** \`${HEAD_SHA}\` (${COMMIT_COUNT} commit(s) since \`${LAST_TAG}\`)
+
+          ### Commits Included
+          ${COMMITS}
+
+          ---
+
+          ### How to Approve
+          Comment on this issue with one of:
+          - \`/approve\` — tag and publish **\`${NEXT_TAG}\`**
+          - \`/approve patch\` — override and publish next **patch** version
+          - \`/approve minor\` — override and publish next **minor** version
+          - \`/approve major\` — override and publish next **major** version
+          - \`/approve vX.Y.Z\` — override with an explicit semver tag
+
+          Only \`@evhu-dev\` (repository owner) can approve. Close this issue to cancel.
+          EOF
+
+          EXISTING_NUM=$(gh issue list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --label "release-approval" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "${EXISTING_NUM}" ]; then
+            gh issue edit "${EXISTING_NUM}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${TITLE}" \
+              --body-file /tmp/issue_body.md
+            gh issue comment "${EXISTING_NUM}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --body "@evhu-dev Updated release proposal to **\`${NEXT_TAG}\`** at commit \`${HEAD_SHA}\` after CI passed on \`main\`."
+          else
+            gh issue create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${TITLE}" \
+              --label "release-approval" \
+              --assignee "evhu-dev" \
+              --body-file /tmp/issue_body.md
+          fi
