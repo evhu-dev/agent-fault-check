@@ -91,7 +91,7 @@ func NewHTTPProxy(opts Options) (*HTTPProxy, error) {
 				DialContext:           (&net.Dialer{Timeout: opts.UpstreamTimeout}).DialContext,
 				MaxIdleConns:          64,
 				IdleConnTimeout:       30 * time.Second,
-				DisableCompression:    false,
+				DisableCompression:    true,
 				ExpectContinueTimeout: 1 * time.Second,
 			},
 		},
@@ -371,15 +371,17 @@ func (p *HTTPProxy) handleTargetedResponse(
 				Status:    499,
 			})
 		case <-timer.C:
+			p.engine.MarkFired(rule.ID)
 			p.trace.Record(TraceEvent{
-				Method:    method,
-				Path:      path,
-				CallIndex: callIdx,
-				FaultID:   rule.ID,
-				Event:     EventFaultUnfired,
-				Status:    http.StatusGatewayTimeout,
+				Method:            method,
+				Path:              path,
+				CallIndex:         callIdx,
+				FaultID:           rule.ID,
+				Event:             EventFaultInjected,
+				Status:            http.StatusGatewayTimeout,
+				CorrelationValues: corrVals,
 			})
-			writeJSONError(w, http.StatusGatewayTimeout, `{"error":"injected hold expired before client timeout"}`)
+			writeJSONError(w, http.StatusGatewayTimeout, `{"error":"injected timeout hold expired"}`)
 			p.trace.Record(TraceEvent{
 				Method:    method,
 				Path:      path,

@@ -12,8 +12,9 @@ inputs:
     required: false
     default: "chaos-spec.yaml"
   version:
-    description: "Pinned afc release tag (e.g. v0.1.0)"
-    required: true
+    description: "Pinned afc release tag (e.g. v0.2.0) or 'latest'"
+    required: false
+    default: "latest"
   report-mode:
     description: "Report format: console (public OSS release) or junit, sarif, both (requires commercial release-repository)"
     required: false
@@ -71,16 +72,25 @@ runs:
         if [ -n "${AFC_RELEASE_REPO}" ]; then
           BIN_PREFIX="afc-pro"
         fi
-        TARBALL="${BIN_PREFIX}_${AFC_VERSION#v}_${OS}_${GOARCH}.tar.gz"
-        BASE_URL="https://github.com/${DOWNLOAD_REPO}/releases/download/${AFC_VERSION}"
-        TMPDIR=$(mktemp -d)
-        trap 'rm -rf "$TMPDIR"' EXIT
         CURL_AUTH=()
         if [ -n "${AFC_RELEASE_TOKEN}" ]; then
           CURL_AUTH=(-H "Authorization: Bearer ${AFC_RELEASE_TOKEN}")
         fi
-        curl -fsSL "${CURL_AUTH[@]}" "${BASE_URL}/${TARBALL}" -o "${TMPDIR}/${TARBALL}"
-        curl -fsSL "${CURL_AUTH[@]}" "${BASE_URL}/checksums.txt" -o "${TMPDIR}/checksums.txt"
+        if [ "${AFC_VERSION}" = "latest" ]; then
+          AFC_VERSION=$(curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "${CURL_AUTH[@]}" \
+            "https://api.github.com/repos/${DOWNLOAD_REPO}/releases/latest" \
+            | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+          if [ -z "${AFC_VERSION}" ]; then
+            echo "error: failed to resolve latest release tag from ${DOWNLOAD_REPO}" >&2
+            exit 2
+          fi
+        fi
+        TARBALL="${BIN_PREFIX}_${AFC_VERSION#v}_${OS}_${GOARCH}.tar.gz"
+        BASE_URL="https://github.com/${DOWNLOAD_REPO}/releases/download/${AFC_VERSION}"
+        TMPDIR=$(mktemp -d)
+        trap 'rm -rf "$TMPDIR"' EXIT
+        curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "${CURL_AUTH[@]}" "${BASE_URL}/${TARBALL}" -o "${TMPDIR}/${TARBALL}"
+        curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "${CURL_AUTH[@]}" "${BASE_URL}/checksums.txt" -o "${TMPDIR}/checksums.txt"
         (
           cd "${TMPDIR}"
           CHECKSUM_LINE=$(awk -v f="${TARBALL}" '$2 == f { print; found=1 } END { exit !found }' checksums.txt)

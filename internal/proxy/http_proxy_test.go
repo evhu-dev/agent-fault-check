@@ -122,7 +122,7 @@ func TestCommitThenFailTimeoutAttribution(t *testing.T) {
 		t.Fatalf("expected timeout fault to be marked fired")
 	}
 
-	// Case 2: hold expires before client timeout -> 504 returned, fault marked unfired
+	// Case 2: hold expires before client timeout -> 504 returned, fault marked fired
 	eng2 := faults.NewEngine([]config.FaultRule{{
 		ID:       "hold-2",
 		Strategy: "commit_then_fail",
@@ -150,8 +150,8 @@ func TestCommitThenFailTimeoutAttribution(t *testing.T) {
 	if resp.StatusCode != http.StatusGatewayTimeout {
 		t.Fatalf("expected 504 when hold expires, got %d", resp.StatusCode)
 	}
-	if len(eng2.UnfiredFaults()) != 1 {
-		t.Fatalf("expected fault to remain unfired when hold expired first")
+	if len(eng2.UnfiredFaults()) != 0 {
+		t.Fatalf("expected timeout fault to be marked fired when hold expired with 504, got unfired=%v", eng2.UnfiredFaults())
 	}
 }
 

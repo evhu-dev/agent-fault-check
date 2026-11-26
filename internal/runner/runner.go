@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/agent-fault-check/afc/internal/assertions"
@@ -36,10 +35,11 @@ const (
 
 // ScenarioResult captures the full outcome of running one scenario.
 type ScenarioResult struct {
-	ID           string              `json:"id"`
-	RunID        string              `json:"run_id,omitempty"`
-	LineNumber   int                 `json:"line_number,omitempty"`
-	Status       ScenarioStatus      `json:"status"`
+	ID               string              `json:"id"`
+	RunID            string              `json:"run_id,omitempty"`
+	LineNumber       int                 `json:"line_number,omitempty"`
+	FaultLineNumbers map[string]int      `json:"fault_line_numbers,omitempty"`
+	Status           ScenarioStatus      `json:"status"`
 	DurationMs   int64               `json:"duration_ms"`
 	Assertions   []assertions.Result `json:"assertions,omitempty"`
 	CallTimeline []string            `json:"call_timeline,omitempty"`
@@ -91,6 +91,17 @@ func RunSuite(ctx context.Context, spec *config.Spec, specPath string, scenarioF
 
 		scRes := runScenario(ctx, spec, specDir, sc)
 		scRes.LineNumber = spec.LineNumbers[sc.ID]
+		if len(sc.Faults) > 0 {
+			flines := make(map[string]int, len(sc.Faults))
+			for _, f := range sc.Faults {
+				if ln := spec.LineNumbers[sc.ID+"/"+f.ID]; ln > 0 {
+					flines[f.ID] = ln
+				}
+			}
+			if len(flines) > 0 {
+				scRes.FaultLineNumbers = flines
+			}
+		}
 		res.Scenarios = append(res.Scenarios, scRes)
 
 		switch scRes.Status {
@@ -123,14 +134,15 @@ func runScenario(ctx context.Context, spec *config.Spec, specDir string, sc *con
 		RunID: runID,
 	}
 
-	// Always run bounded, idempotent teardown once setup is attempted.
-	setupAttempted := false
+	// Always run bounded, idempotent teardown once execution begins, and redact
+	// any secrets that may appear in store/driver/teardown/assertion errors.
+	scenarioStarted := false
 	defer func() {
 		out.DurationMs = time.Since(start).Milliseconds()
-		if setupAttempted && len(spec.Fixture.TeardownArgv) > 0 {
+		if scenarioStarted && len(spec.Fixture.TeardownArgv) > 0 {
 			tdCtx, tdCancel := context.WithTimeout(context.Background(), time.Duration(spec.Fixture.TeardownTimeoutSeconds)*time.Second)
 			defer tdCancel()
-			if tdErr := runArgv(tdCtx, spec.Fixture.TeardownArgv, specDir, buildFixtureEnv(spec, runID, ""), nil); tdErr != nil {
+			if tdErr := runArgv(tdCtx, spec.Fixture.TeardownArgv, specDir, buildFixtureEnv(spec, sc.ID, runID, ""), nil); tdErr != nil {
 				out.Teardown = tdErr.Error()
 				if out.Status == StatusPassed || out.Status == StatusFailed {
 					out.Status = StatusError
@@ -140,17 +152,24 @@ func runScenario(ctx context.Context, spec *config.Spec, specDir string, sc *con
 				}
 			}
 		}
+		out.Error = RedactSecrets(out.Error)
+		out.Teardown = RedactSecrets(out.Teardown)
+		for i := range out.Assertions {
+			out.Assertions[i].Message = RedactSecrets(out.Assertions[i].Message)
+		}
 	}()
 
-	// 1. Fixture setup
-	setupAttempted = true
-	setupCtx, setupCancel := context.WithTimeout(ctx, time.Duration(spec.Fixture.SetupTimeoutSeconds)*time.Second)
-	err = runArgv(setupCtx, spec.Fixture.SetupArgv, specDir, buildFixtureEnv(spec, runID, ""), nil)
-	setupCancel()
-	if err != nil {
-		out.Status = StatusError
-		out.Error = fmt.Sprintf("fixture setup failed: %v", err)
-		return out
+	// 1. Fixture setup (optional)
+	scenarioStarted = true
+	if len(spec.Fixture.SetupArgv) > 0 {
+		setupCtx, setupCancel := context.WithTimeout(ctx, time.Duration(spec.Fixture.SetupTimeoutSeconds)*time.Second)
+		err = runArgv(setupCtx, spec.Fixture.SetupArgv, specDir, buildFixtureEnv(spec, sc.ID, runID, ""), nil)
+		setupCancel()
+		if err != nil {
+			out.Status = StatusError
+			out.Error = fmt.Sprintf("fixture setup failed: %v", err)
+			return out
+		}
 	}
 
 	// 2. Store readiness checks (only for stores referenced by this scenario)
@@ -207,7 +226,7 @@ func runScenario(ctx context.Context, spec *config.Spec, specDir string, sc *con
 	promptPayload = append(promptPayload, '\n')
 
 	agentCtx, agentCancel := context.WithTimeout(ctx, time.Duration(spec.Agent.TimeoutSeconds)*time.Second)
-	agentErr := runArgv(agentCtx, spec.Agent.Argv, agentDir, buildAgentEnv(spec, runID, px.URL()), promptPayload)
+	agentErr := runArgv(agentCtx, spec.Agent.Argv, agentDir, buildAgentEnv(spec, sc, runID, px.URL()), promptPayload)
 	agentCancel()
 
 	// 5. Drain proxy before quiesce/assertions so no writes remain in flight.
@@ -235,7 +254,7 @@ func runScenario(ctx context.Context, spec *config.Spec, specDir string, sc *con
 	// 6. Quiesce fixture (proxy is already shut down, so do not pass dead proxy URL)
 	if len(spec.Fixture.QuiesceArgv) > 0 {
 		qCtx, qCancel := context.WithTimeout(ctx, time.Duration(spec.Fixture.QuiesceTimeoutSeconds)*time.Second)
-		qErr := runArgv(qCtx, spec.Fixture.QuiesceArgv, specDir, buildFixtureEnv(spec, runID, ""), nil)
+		qErr := runArgv(qCtx, spec.Fixture.QuiesceArgv, specDir, buildFixtureEnv(spec, sc.ID, runID, ""), nil)
 		qCancel()
 		if qErr != nil {
 			out.Status = StatusError
@@ -317,10 +336,12 @@ func summarizeTrace(trace *proxy.TraceLog) []string {
 		idx    int
 	}
 	order := make([]callKey, 0)
+	seen := make(map[callKey]bool)
 	steps := make(map[callKey][]string)
 	for _, ev := range events {
 		k := callKey{ev.Method, ev.Path, ev.CallIndex}
-		if _, exists := steps[k]; !exists {
+		if !seen[k] {
+			seen[k] = true
 			order = append(order, k)
 		}
 		switch ev.Event {
@@ -362,7 +383,7 @@ func runArgv(ctx context.Context, argv []string, dir string, env []string, stdin
 	cmd.Dir = dir
 	cmd.Env = env
 	cmd.WaitDelay = 2 * time.Second
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	configureProcGroup(cmd)
 
 	if stdinBytes != nil {
 		cmd.Stdin = bytes.NewReader(stdinBytes)
@@ -388,23 +409,7 @@ func runArgv(ctx context.Context, argv []string, dir string, env []string, stdin
 		}
 		return nil
 	case <-ctx.Done():
-		pgid := cmd.Process.Pid
-		_ = syscall.Kill(-pgid, syscall.SIGTERM)
-		exited := false
-		select {
-		case <-done:
-			exited = true
-		case <-time.After(2 * time.Second):
-		}
-		// Always send SIGKILL to the process group so descendants that ignore
-		// SIGTERM cannot survive after the direct child exits.
-		_ = syscall.Kill(-pgid, syscall.SIGKILL)
-		if !exited {
-			select {
-			case <-done:
-			case <-time.After(2 * time.Second):
-			}
-		}
+		killProcGroup(cmd, done)
 		return fmt.Errorf("process timed out or cancelled: %w", ctx.Err())
 	}
 }
@@ -445,10 +450,35 @@ func (b *boundedBuffer) String() string {
 	return b.buf.String()
 }
 
-func buildAgentEnv(spec *config.Spec, runID, proxyURL string) []string {
-	envMap := map[string]string{
-		"PATH": os.Getenv("PATH"),
+var baselineHostEnvs = []string{
+	"PATH",
+	"HOME",
+	"USER",
+	"TMPDIR",
+	"TMP",
+	"TEMP",
+	"LANG",
+	"LC_ALL",
+	"SSL_CERT_FILE",
+	"SSL_CERT_DIR",
+	"SYSTEMROOT",
+}
+
+func baselineEnvMap() map[string]string {
+	envMap := make(map[string]string, len(baselineHostEnvs)+4)
+	for _, k := range baselineHostEnvs {
+		if v, ok := os.LookupEnv(k); ok {
+			envMap[k] = v
+		}
 	}
+	if _, ok := envMap["PATH"]; !ok {
+		envMap["PATH"] = os.Getenv("PATH")
+	}
+	return envMap
+}
+
+func buildAgentEnv(spec *config.Spec, sc *config.Scenario, runID, proxyURL string) []string {
+	envMap := baselineEnvMap()
 	for _, k := range spec.Agent.EnvAllowlist {
 		if v, ok := os.LookupEnv(k); ok {
 			envMap[k] = v
@@ -458,14 +488,14 @@ func buildAgentEnv(spec *config.Spec, runID, proxyURL string) []string {
 		envMap[k] = v
 	}
 	envMap["AFC_RUN_ID"] = runID
+	envMap["AFC_SCENARIO_ID"] = sc.ID
+	envMap["AFC_PROMPT"] = sc.Prompt
 	envMap["TOOL_API_BASE_URL"] = proxyURL
 	return flattenEnvMap(envMap)
 }
 
-func buildFixtureEnv(spec *config.Spec, runID, proxyURL string) []string {
-	envMap := map[string]string{
-		"PATH": os.Getenv("PATH"),
-	}
+func buildFixtureEnv(spec *config.Spec, scenarioID, runID, proxyURL string) []string {
+	envMap := baselineEnvMap()
 	for _, k := range spec.Fixture.EnvAllowlist {
 		if v, ok := os.LookupEnv(k); ok {
 			envMap[k] = v
@@ -487,6 +517,7 @@ func buildFixtureEnv(spec *config.Spec, runID, proxyURL string) []string {
 		}
 	}
 	envMap["AFC_RUN_ID"] = runID
+	envMap["AFC_SCENARIO_ID"] = scenarioID
 	if proxyURL != "" {
 		envMap["TOOL_API_BASE_URL"] = proxyURL
 	}

@@ -68,7 +68,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.id }}
           INPUT_BUMP: ${{ inputs.bump }}
           INPUT_TAG: ${{ inputs.tag }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TAG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -176,10 +176,28 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
           echo "Resolved release tag=${TAG} version=${VERSION} sha=${SHA}"
 
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: prepare
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Run pre-release vet and race test suite
+        run: |
+          go mod verify
+          go vet ./...
+          go test -timeout 60s -race ./...
+
   goreleaser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: prepare
+    needs: [prepare, verify]
     steps:
       - uses: actions/checkout@v7
         with:

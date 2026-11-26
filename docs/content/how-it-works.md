@@ -15,5 +15,7 @@ For each scenario in `chaos-spec.yaml`, `afc` executes a deterministic 6-step li
 | :--- | :--- |
 | `TOOL_API_BASE_URL` | Base URL of the local fault-injection proxy (e.g. `http://127.0.0.1:54321`). Point your agent's tool API client here. |
 | `AFC_RUN_ID` | Unique ID generated per scenario execution. Use it to isolate test rows/keys cleanly across parallel runs. |
+| `AFC_SCENARIO_ID` | The current scenario `id` from `chaos-spec.yaml`. |
+| `AFC_PROMPT` | The scenario `prompt` string (also delivered as JSON `{"prompt": "...", "run_id": "..."}` on `stdin`). |
 
 > **Tip:** To pass extra host environment variables (such as `OPENAI_API_KEY`) into your agent or fixture, explicitly list them under `agent.env_allowlist` or `fixture.env_allowlist`.

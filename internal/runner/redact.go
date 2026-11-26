@@ -9,8 +9,8 @@ var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}`),
 	// Polar / AFC license keys (AFC_PRO_..., AFCPRO-..., AFCTEAM-...)
 	regexp.MustCompile(`\bAFC_?(?:PRO|TEAM)[A-Za-z0-9_-]{8,}`),
-	// Common API keys & GitHub tokens
-	regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})`),
+	// Common API keys, Polar tokens, AWS access keys, Slack tokens & GitHub tokens
+	regexp.MustCompile(`\b(?:sk-(?:ant-)?[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|polar_(?:oat|pat)_[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,})`),
 	// Sensitive KEY=VALUE assignments
 	regexp.MustCompile(`(?i)\b([A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|API_KEY|LICENSE_KEY|DSN)[A-Z0-9_]*)=([^\s"']+|"[^"]*"|'[^']*')`),
 }

@@ -19,13 +19,18 @@ jobs:
           go-version-file: go.mod
       - name: Run OSS vet & race tests
         run: |
+          go mod verify
           go vet ./...
           go test -timeout 60s -race ./...
+      - name: Run Go vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
       - name: Verify cross-platform static builds
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./cmd/afc
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/afc
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build ./cmd/afc
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build ./cmd/afc
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./cmd/afc
 
   postgres-e2e:
     runs-on: ubuntu-latest

@@ -28,6 +28,8 @@ var (
 	idRegex      = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 	reservedEnvs = map[string]bool{
 		"AFC_RUN_ID":        true,
+		"AFC_SCENARIO_ID":   true,
+		"AFC_PROMPT":        true,
 		"TOOL_API_BASE_URL": true,
 		"AFC_LICENSE_KEY":   true,
 	}
@@ -256,14 +258,14 @@ func validateAgent(a *AgentConfig) error {
 }
 
 func validateFixture(f *FixtureConfig) error {
-	if len(f.SetupArgv) == 0 || strings.TrimSpace(f.SetupArgv[0]) == "" {
-		return errors.New("fixture.setup_argv must contain a non-empty executable")
+	if len(f.SetupArgv) > 0 && strings.TrimSpace(f.SetupArgv[0]) == "" {
+		return errors.New("fixture.setup_argv executable cannot be empty")
 	}
 	if len(f.QuiesceArgv) > 0 && strings.TrimSpace(f.QuiesceArgv[0]) == "" {
 		return errors.New("fixture.quiesce_argv executable cannot be empty")
 	}
-	if len(f.TeardownArgv) == 0 || strings.TrimSpace(f.TeardownArgv[0]) == "" {
-		return errors.New("fixture.teardown_argv must contain a non-empty executable")
+	if len(f.TeardownArgv) > 0 && strings.TrimSpace(f.TeardownArgv[0]) == "" {
+		return errors.New("fixture.teardown_argv executable cannot be empty")
 	}
 	if f.SetupTimeoutSeconds <= 0 || f.QuiesceTimeoutSeconds <= 0 || f.TeardownTimeoutSeconds <= 0 {
 		return errors.New("fixture timeouts must be positive")
@@ -390,13 +392,26 @@ func validateScenario(sc *Scenario, stores map[string]StoreEntry) error {
 
 var httpMethodRegex = regexp.MustCompile(`^[A-Z]+$`)
 
+func normalizeMatchPath(raw string) (string, error) {
+	if !strings.HasPrefix(raw, "/") || strings.Contains(raw, "?") || strings.Contains(raw, "#") {
+		return "", fmt.Errorf("path %q must start with '/' and exclude query parameters or fragments", raw)
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid path %q: %w", raw, err)
+	}
+	return u.EscapedPath(), nil
+}
+
 func validateFault(f *FaultRule) error {
 	if !httpMethodRegex.MatchString(f.Match.Method) {
 		return fmt.Errorf("match.method %q must be a non-empty uppercase HTTP method", f.Match.Method)
 	}
-	if !strings.HasPrefix(f.Match.Path, "/") || strings.Contains(f.Match.Path, "?") {
-		return fmt.Errorf("match.path %q must start with '/' and exclude query parameters", f.Match.Path)
+	normPath, err := normalizeMatchPath(f.Match.Path)
+	if err != nil {
+		return fmt.Errorf("match.%w", err)
 	}
+	f.Match.Path = normPath
 	if f.Match.Call < 1 {
 		return errors.New("match.call must be >= 1")
 	}
@@ -486,9 +501,14 @@ func validateAssertion(a *Assertion, faultIDs map[string]bool, stores map[string
 		if a.Fault != "" || a.CorrelationHeader != "" || a.MinAfterInjection != 0 || a.Store != "" || a.Query != "" || len(a.Args) > 0 || a.Expected != nil || a.Pattern != "" || a.Key != "" || a.Path != "" {
 			return errors.New("max_tool_calls does not accept fault/correlation_header/min_after_injection/store/query/args/expected/pattern/key/path")
 		}
-		if a.Match == nil || !httpMethodRegex.MatchString(a.Match.Method) || !strings.HasPrefix(a.Match.Path, "/") || strings.Contains(a.Match.Path, "?") {
+		if a.Match == nil || !httpMethodRegex.MatchString(a.Match.Method) {
 			return errors.New("match.method (uppercase) and match.path (starting with '/' and excluding query parameters) are required")
 		}
+		normPath, err := normalizeMatchPath(a.Match.Path)
+		if err != nil {
+			return fmt.Errorf("match.%w", err)
+		}
+		a.Match.Path = normPath
 		if a.MaxCalls == nil || *a.MaxCalls < 0 {
 			return errors.New("max_calls must be a non-negative integer")
 		}
