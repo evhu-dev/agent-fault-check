@@ -25,7 +25,7 @@ func CheckPostgresReady(ctx context.Context, dsnEnv string) error {
 		conn, err := pgx.Connect(attemptCtx, dsn)
 		if err == nil {
 			err = conn.Ping(attemptCtx)
-			_ = conn.Close(context.Background())
+			_ = conn.Close(attemptCtx)
 		}
 		attemptCancel()
 		if err == nil {
@@ -53,13 +53,20 @@ func evalSQLRowCount(ctx context.Context, ec EvalContext, a config.Assertion) Re
 	if err != nil {
 		return Result{Type: a.Type, Target: target, InfraErr: true, Message: fmt.Sprintf("connect postgres (%s): %v", a.Store, err)}
 	}
-	defer conn.Close(context.Background())
+	var tx pgx.Tx
+	defer func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+		defer cancel()
+		if tx != nil {
+			_ = tx.Rollback(cleanupCtx)
+		}
+		_ = conn.Close(cleanupCtx)
+	}()
 
-	tx, err := conn.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	tx, err = conn.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return Result{Type: a.Type, Target: target, InfraErr: true, Message: fmt.Sprintf("begin read-only tx (%s): %v", a.Store, err)}
 	}
-	defer tx.Rollback(context.Background())
 
 	args := resolveSQLArgs(a.Args, ec.RunID)
 	var actual int64

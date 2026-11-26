@@ -18,6 +18,27 @@ import (
 	"github.com/agent-fault-check/afc/internal/proxy"
 )
 
+func TestCancellationTakesPrecedenceOverEarlierFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		cancel()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	spec := &config.Spec{
+		Agent:     config.AgentConfig{Argv: []string{"sh", "-c", "exit 1"}, TimeoutSeconds: 5},
+		Fixture:   config.FixtureConfig{TeardownArgv: []string{"curl", "-fsS", server.URL}, TeardownTimeoutSeconds: 5},
+		Proxy:     config.ProxyConfig{ListenAddr: "127.0.0.1:0", UpstreamURL: server.URL, UpstreamTimeoutMs: 1000},
+		Scenarios: []config.Scenario{{ID: "failed"}, {ID: "unstarted"}},
+	}
+	res := RunSuite(ctx, spec, filepath.Join(t.TempDir(), "spec.yaml"), "")
+	if res.ExitCode != 2 || len(res.Scenarios) != 2 || res.Scenarios[0].Status != StatusFailed || res.Scenarios[1].Status != StatusSkipped {
+		t.Fatalf("cancellation should take precedence over scenario failure: %+v", res)
+	}
+}
+
 func TestTeardownFailurePreservedOnPassAndFail(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

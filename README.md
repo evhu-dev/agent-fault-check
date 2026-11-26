@@ -69,6 +69,8 @@ Paid report modes (`sarif`, `junit`, `both`) require `release-repository` pointi
     license-key: ${{ secrets.AFC_LICENSE_KEY }}
 ```
 
+Use the Action's `sarif-file` and `junit-file` outputs to locate reports in later steps. Each invocation writes reports to its own directory under `RUNNER_TEMP`; an output is empty if that report was not generated.
+
 ---
 
 ## Editions & Pricing

@@ -138,19 +138,21 @@ func cmdRun(args []string) int {
 	res.ToolVersion = Version
 	report.WriteConsole(os.Stdout, res, *verbose)
 
-	if *sarifPath != "" {
-		if err := report.WriteProReport("sarif", res, *sarifPath); err != nil {
-			fmt.Fprintf(os.Stderr, "report write error (sarif): %v\n", err)
-			return 2
+	return writeRequestedReports(res, *sarifPath, *junitPath)
+}
+
+func writeRequestedReports(res runner.SuiteResult, sarifPath, junitPath string) int {
+	exitCode := res.ExitCode
+	for _, output := range []struct{ format, path string }{{"sarif", sarifPath}, {"junit", junitPath}} {
+		if output.path == "" {
+			continue
+		}
+		if err := report.WriteProReport(output.format, res, output.path); err != nil {
+			fmt.Fprintf(os.Stderr, "report write error (%s): %v\n", output.format, err)
+			exitCode = 2
 		}
 	}
-	if *junitPath != "" {
-		if err := report.WriteProReport("junit", res, *junitPath); err != nil {
-			fmt.Fprintf(os.Stderr, "report write error (junit): %v\n", err)
-			return 2
-		}
-	}
-	return res.ExitCode
+	return exitCode
 }
 
 func printUsage() {

@@ -49,3 +49,5 @@ steps:
 | `license-key` | Input | Your Polar license key from `${{ secrets.AFC_LICENSE_KEY }}`. |
 | `exit-code` | Output | CLI exit code (`0`, `1`, or `2`). |
 | `sarif-file` / `junit-file` | Output | Paths to generated `afc-results.sarif` and `afc-results.xml`. |
+
+> **Report paths:** Each Action invocation writes reports to a fresh directory under `RUNNER_TEMP` so repeated steps never read stale files. Always reference `${{ steps.<id>.outputs.sarif-file }}` and `${{ steps.<id>.outputs.junit-file }}` (empty if not generated).

@@ -27,3 +27,7 @@ Ensure your HTTP state endpoint returns a JSON integer (`1`) or `{"count": 1}`.
 ## Postgres or Redis connection refused in CI
 
 Ensure your CI service container has a healthcheck (e.g. `pg_isready` / `redis-cli ping`) and that `dsn_env` / `url_env` matches the exact environment variable exported to the step.
+
+## `commit_then_fail` with `kind: timeout` reports `AFC104` / `504`
+
+If the proxy returns `504` (`fault hold expired before client disconnect`), your agent's HTTP client timeout is longer than `inject.hold_ms`. Either lower your agent's tool-call timeout below `hold_ms` (or raise `hold_ms`), or switch to `inject: { kind: http_error, status: 504 }` if you want to inject an immediate gateway timeout.

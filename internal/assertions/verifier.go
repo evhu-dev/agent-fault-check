@@ -20,6 +20,9 @@ type Result struct {
 	Passed   bool   `json:"passed"`
 	InfraErr bool   `json:"infra_error,omitempty"`
 	Message  string `json:"message"`
+
+	LineNumber   int `json:"-"`
+	ColumnNumber int `json:"-"`
 }
 
 // EvalContext provides run-scoped inputs for assertion evaluation.
@@ -121,6 +124,7 @@ func EvaluateAll(parentCtx context.Context, ec EvalContext) []Result {
 			}
 		}
 		cancel()
+		res.LineNumber, res.ColumnNumber = a.LineNumber, a.ColumnNumber
 		results = append(results, res)
 	}
 	return results

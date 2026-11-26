@@ -114,25 +114,29 @@ runs:
         AFC_SPEC_PATH: ${{ inputs.spec-path }}
         AFC_REPORT_MODE: ${{ inputs.report-mode }}
       run: |
-        set +e
+        set -euo pipefail
         ARGS=(run --spec "${AFC_SPEC_PATH}")
         SARIF_PATH=""
         JUNIT_PATH=""
         case "${AFC_REPORT_MODE}" in
           console)
             ;;
-          sarif)
-            SARIF_PATH="afc-results.sarif"
-            ARGS+=(--sarif "${SARIF_PATH}")
-            ;;
-          junit)
-            JUNIT_PATH="afc-results.xml"
-            ARGS+=(--junit "${JUNIT_PATH}")
-            ;;
-          both)
-            SARIF_PATH="afc-results.sarif"
-            JUNIT_PATH="afc-results.xml"
-            ARGS+=(--sarif "${SARIF_PATH}" --junit "${JUNIT_PATH}")
+          sarif|junit|both)
+            if ! REPORT_DIR=$(mktemp -d "${RUNNER_TEMP}/afc-reports.XXXXXXXX"); then
+              echo "error: could not create a fresh afc report directory" >&2
+              echo "exit_code=2" >> "$GITHUB_OUTPUT"
+              echo "sarif_file=" >> "$GITHUB_OUTPUT"
+              echo "junit_file=" >> "$GITHUB_OUTPUT"
+              exit 2
+            fi
+            if [[ "${AFC_REPORT_MODE}" == sarif || "${AFC_REPORT_MODE}" == both ]]; then
+              SARIF_PATH="${REPORT_DIR}/afc-results.sarif"
+              ARGS+=(--sarif "${SARIF_PATH}")
+            fi
+            if [[ "${AFC_REPORT_MODE}" == junit || "${AFC_REPORT_MODE}" == both ]]; then
+              JUNIT_PATH="${REPORT_DIR}/afc-results.xml"
+              ARGS+=(--junit "${JUNIT_PATH}")
+            fi
             ;;
           *)
             echo "Invalid report-mode: ${AFC_REPORT_MODE} (expected console, junit, sarif, or both)" >&2
@@ -142,8 +146,8 @@ runs:
             exit 2
             ;;
         esac
-        afc "${ARGS[@]}"
-        RC=$?
+        RC=0
+        afc "${ARGS[@]}" || RC=$?
         OUT_SARIF=""
         OUT_JUNIT=""
         if [ -n "${SARIF_PATH}" ] && [ -f "${SARIF_PATH}" ]; then

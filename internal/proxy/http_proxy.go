@@ -31,6 +31,7 @@ type HTTPProxy struct {
 	listener      net.Listener
 	upstreamURL   *url.URL
 	client        *http.Client
+	oneShotClient *http.Client
 	engine        *faults.Engine
 	trace         *TraceLog
 	abortAfter    int
@@ -77,30 +78,39 @@ func NewHTTPProxy(opts Options) (*HTTPProxy, error) {
 	}
 
 	baseCtx, cancelBase := context.WithCancel(context.Background())
-
-	p := &HTTPProxy{
-		listener:    ln,
-		upstreamURL: u,
-		client: &http.Client{
+	transport := &http.Transport{
+		DialContext:           (&net.Dialer{Timeout: opts.UpstreamTimeout}).DialContext,
+		MaxIdleConns:          64,
+		IdleConnTimeout:       30 * time.Second,
+		DisableCompression:    true,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	oneShotTransport := transport.Clone()
+	// A fresh HTTP/1 connection prevents net/http from replaying writes on reused connections.
+	oneShotTransport.DisableKeepAlives = true
+	oneShotTransport.Protocols = new(http.Protocols)
+	oneShotTransport.Protocols.SetHTTP1(true)
+	newClient := func(tr *http.Transport) *http.Client {
+		return &http.Client{
 			Timeout: opts.UpstreamTimeout,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
-			Transport: &http.Transport{
-				Proxy:                 nil,
-				DialContext:           (&net.Dialer{Timeout: opts.UpstreamTimeout}).DialContext,
-				MaxIdleConns:          64,
-				IdleConnTimeout:       30 * time.Second,
-				DisableCompression:    true,
-				ExpectContinueTimeout: 1 * time.Second,
-			},
-		},
-		engine:      opts.Engine,
-		trace:       opts.Trace,
-		abortAfter:  opts.AbortAfterToolCalls,
-		corrHeaders: corr,
-		baseCtx:     baseCtx,
-		cancelBase:  cancelBase,
+			Transport: tr,
+		}
+	}
+
+	p := &HTTPProxy{
+		listener:      ln,
+		upstreamURL:   u,
+		client:        newClient(transport),
+		oneShotClient: newClient(oneShotTransport),
+		engine:        opts.Engine,
+		trace:         opts.Trace,
+		abortAfter:    opts.AbortAfterToolCalls,
+		corrHeaders:   corr,
+		baseCtx:       baseCtx,
+		cancelBase:    cancelBase,
 	}
 
 	p.server = &http.Server{
@@ -127,6 +137,7 @@ func (p *HTTPProxy) Shutdown(ctx context.Context) error {
 		_ = p.server.Close()
 	}
 	p.client.CloseIdleConnections()
+	p.oneShotClient.CloseIdleConnections()
 	return err
 }
 
@@ -371,17 +382,15 @@ func (p *HTTPProxy) handleTargetedResponse(
 				Status:    499,
 			})
 		case <-timer.C:
-			p.engine.MarkFired(rule.ID)
 			p.trace.Record(TraceEvent{
-				Method:            method,
-				Path:              path,
-				CallIndex:         callIdx,
-				FaultID:           rule.ID,
-				Event:             EventFaultInjected,
-				Status:            http.StatusGatewayTimeout,
-				CorrelationValues: corrVals,
+				Method:    method,
+				Path:      path,
+				CallIndex: callIdx,
+				FaultID:   rule.ID,
+				Event:     EventFaultUnfired,
+				Status:    http.StatusGatewayTimeout,
 			})
-			writeJSONError(w, http.StatusGatewayTimeout, `{"error":"injected timeout hold expired"}`)
+			writeJSONError(w, http.StatusGatewayTimeout, `{"error":"fault hold expired before client disconnect"}`)
 			p.trace.Record(TraceEvent{
 				Method:    method,
 				Path:      path,
@@ -466,7 +475,11 @@ func (p *HTTPProxy) forwardUpstream(inReq *http.Request, reqBody []byte, detachC
 	outReq.Header.Del("Accept-Encoding") // Ensure uncompressed upstream JSON for bounded inspection.
 	outReq.ContentLength = int64(len(reqBody))
 
-	resp, err := p.client.Do(outReq)
+	client := p.client
+	if detachCancel {
+		client = p.oneShotClient
+	}
+	resp, err := client.Do(outReq)
 	if err != nil {
 		return nil, nil, err
 	}

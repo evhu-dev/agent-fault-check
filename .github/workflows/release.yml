@@ -268,7 +268,7 @@ jobs:
             AFC_COMMIT=${{ needs.prepare.outputs.sha }}
             AFC_UPGRADE_URL=${{ secrets.AFC_UPGRADE_URL }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true
 
   close-approval:
     if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.issue_number != ''

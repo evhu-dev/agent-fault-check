@@ -77,12 +77,12 @@ func Parse(data []byte) (*Spec, error) {
 		return nil, fmt.Errorf("decode spec: %w", err)
 	}
 
-	spec.LineNumbers = extractLineNumbers(&doc)
 	applyDefaults(&spec)
 
 	if err := validateSpec(&spec); err != nil {
 		return nil, err
 	}
+	extractSourceLocations(&doc, &spec)
 	return &spec, nil
 }
 
@@ -111,34 +111,49 @@ func rejectAliasesAndDuplicateKeys(node *yaml.Node) error {
 	return nil
 }
 
-func extractLineNumbers(doc *yaml.Node) map[string]int {
-	lines := make(map[string]int)
+func extractSourceLocations(doc *yaml.Node, spec *Spec) {
+	spec.LineNumbers = make(map[string]int)
 	if doc == nil || len(doc.Content) == 0 {
-		return lines
+		return
 	}
-	root := doc.Content[0]
-	if root.Kind != yaml.MappingNode {
-		return lines
+	scenarios := mappingValue(doc.Content[0], "scenarios")
+	if scenarios == nil || scenarios.Kind != yaml.SequenceNode {
+		return
 	}
-	for i := 0; i+1 < len(root.Content); i += 2 {
-		if root.Content[i].Value == "scenarios" && root.Content[i+1].Kind == yaml.SequenceNode {
-			for _, scNode := range root.Content[i+1].Content {
-				scID := mappingScalar(scNode, "id")
-				if scID == "" {
-					continue
-				}
-				lines[scID] = scNode.Line
-				if faultsNode := mappingValue(scNode, "faults"); faultsNode != nil && faultsNode.Kind == yaml.SequenceNode {
-					for _, fNode := range faultsNode.Content {
-						if fID := mappingScalar(fNode, "id"); fID != "" {
-							lines[scID+"/"+fID] = fNode.Line
-						}
-					}
+	scenarioIndex := 0
+	for _, scNode := range scenarios.Content {
+		// YAML decoding skips null entries in these slices of structs.
+		if scNode.ShortTag() == "!!null" {
+			continue
+		}
+		if scenarioIndex >= len(spec.Scenarios) {
+			break
+		}
+		sc := &spec.Scenarios[scenarioIndex]
+		scenarioIndex++
+		spec.LineNumbers[sc.ID] = scNode.Line
+		if faultsNode := mappingValue(scNode, "faults"); faultsNode != nil && faultsNode.Kind == yaml.SequenceNode {
+			for _, fNode := range faultsNode.Content {
+				if fID := mappingScalar(fNode, "id"); fID != "" {
+					spec.LineNumbers[sc.ID+"/"+fID] = fNode.Line
 				}
 			}
 		}
+		if assertionsNode := mappingValue(scNode, "assertions"); assertionsNode != nil && assertionsNode.Kind == yaml.SequenceNode {
+			assertionIndex := 0
+			for _, aNode := range assertionsNode.Content {
+				if aNode.ShortTag() == "!!null" {
+					continue
+				}
+				if assertionIndex >= len(sc.Assertions) {
+					break
+				}
+				a := &sc.Assertions[assertionIndex]
+				assertionIndex++
+				a.LineNumber, a.ColumnNumber = aNode.Line, aNode.Column
+			}
+		}
 	}
-	return lines
 }
 
 func mappingValue(node *yaml.Node, key string) *yaml.Node {

@@ -122,7 +122,7 @@ func TestCommitThenFailTimeoutAttribution(t *testing.T) {
 		t.Fatalf("expected timeout fault to be marked fired")
 	}
 
-	// Case 2: hold expires before client timeout -> 504 returned, fault marked fired
+	// Case 2: hold expires before client timeout -> 504 returned, fault remains unfired.
 	eng2 := faults.NewEngine([]config.FaultRule{{
 		ID:       "hold-2",
 		Strategy: "commit_then_fail",
@@ -150,8 +150,106 @@ func TestCommitThenFailTimeoutAttribution(t *testing.T) {
 	if resp.StatusCode != http.StatusGatewayTimeout {
 		t.Fatalf("expected 504 when hold expires, got %d", resp.StatusCode)
 	}
-	if len(eng2.UnfiredFaults()) != 0 {
-		t.Fatalf("expected timeout fault to be marked fired when hold expired with 504, got unfired=%v", eng2.UnfiredFaults())
+	if unfired := eng2.UnfiredFaults(); len(unfired) != 1 || unfired[0] != "hold-2" {
+		t.Fatalf("expected hold-2 to remain unfired after 504, got %v", unfired)
+	}
+	events, _ := px2.trace.Snapshot()
+	for _, ev := range events {
+		if ev.Event == EventFaultInjected {
+			t.Fatalf("hold expiry recorded as an injection: %+v", ev)
+		}
+	}
+}
+
+func TestCommitThenFailUpstreamTimeoutIsNotInjected(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		<-r.Context().Done()
+	}))
+	defer upstream.Close()
+	eng := faults.NewEngine([]config.FaultRule{{
+		ID:       "hold",
+		Strategy: "commit_then_fail",
+		Match:    config.FaultMatch{Method: "POST", Path: "/order", Call: 1},
+		Success:  &config.SuccessSpec{Status: http.StatusCreated, MeansDurableCommit: true},
+		Inject:   &config.InjectSpec{Kind: "timeout", HoldMs: 1000},
+	}})
+	px, err := NewHTTPProxy(Options{
+		ListenAddr: "127.0.0.1:0", UpstreamURL: upstream.URL, UpstreamTimeout: 100 * time.Millisecond,
+		Engine: eng, Trace: NewTraceLog("run-upstream-timeout", "scenario", 100),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer px.Shutdown(context.Background())
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Post(px.URL()+"/order", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadGateway || eng.UnknownCommitError() == nil || len(eng.UnfiredFaults()) != 1 {
+		t.Fatalf("status=%d unknown commit=%v unfired=%v", resp.StatusCode, eng.UnknownCommitError(), eng.UnfiredFaults())
+	}
+}
+
+func TestCommitThenFailDoesNotReplayUpstreamWrite(t *testing.T) {
+	var writes atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/warm" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		writes.Add(1)
+		if r.Header.Get("Idempotency-Key") != "order-1" {
+			t.Error("idempotency key did not reach upstream")
+		}
+		_, _ = io.Copy(io.Discard, r.Body)
+		conn, _, err := http.NewResponseController(w).Hijack()
+		if err != nil {
+			t.Errorf("hijack upstream connection: %v", err)
+			return
+		}
+		_ = conn.Close()
+	}))
+	defer upstream.Close()
+
+	eng := faults.NewEngine([]config.FaultRule{{
+		ID:       "one-write",
+		Strategy: "commit_then_fail",
+		Match:    config.FaultMatch{Method: "POST", Path: "/order", Call: 1},
+		Success:  &config.SuccessSpec{Status: http.StatusCreated, MeansDurableCommit: true},
+		Inject:   &config.InjectSpec{Kind: "http_error", Status: http.StatusServiceUnavailable},
+	}})
+	px, err := NewHTTPProxy(Options{
+		ListenAddr: "127.0.0.1:0", UpstreamURL: upstream.URL, UpstreamTimeout: time.Second,
+		Engine: eng, Trace: NewTraceLog("run-replay", "scenario-replay", 100),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer px.Shutdown(context.Background())
+	client := &http.Client{Timeout: 2 * time.Second}
+	warm, err := client.Get(px.URL() + "/warm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	warm.Body.Close()
+	if warm.StatusCode != http.StatusNoContent {
+		t.Fatalf("warm-up status: %d", warm.StatusCode)
+	}
+	req, err := http.NewRequest(http.MethodPost, px.URL()+"/order", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Idempotency-Key", "order-1")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadGateway || writes.Load() != 1 || eng.UnknownCommitError() == nil || len(eng.UnfiredFaults()) != 1 {
+		t.Fatalf("status=%d writes=%d unknown commit=%v unfired=%v", resp.StatusCode, writes.Load(), eng.UnknownCommitError(), eng.UnfiredFaults())
 	}
 }
 

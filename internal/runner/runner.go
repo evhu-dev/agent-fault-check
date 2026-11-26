@@ -40,14 +40,14 @@ type ScenarioResult struct {
 	LineNumber       int                 `json:"line_number,omitempty"`
 	FaultLineNumbers map[string]int      `json:"fault_line_numbers,omitempty"`
 	Status           ScenarioStatus      `json:"status"`
-	DurationMs   int64               `json:"duration_ms"`
-	Assertions   []assertions.Result `json:"assertions,omitempty"`
-	CallTimeline []string            `json:"call_timeline,omitempty"`
-	Unfired      []string            `json:"unfired_faults,omitempty"`
-	BudgetAbort  bool                `json:"budget_aborted,omitempty"`
-	AgentFailed  bool                `json:"agent_failed,omitempty"`
-	Error        string              `json:"error,omitempty"`
-	Teardown     string              `json:"teardown_error,omitempty"`
+	DurationMs       int64               `json:"duration_ms"`
+	Assertions       []assertions.Result `json:"assertions,omitempty"`
+	CallTimeline     []string            `json:"call_timeline,omitempty"`
+	Unfired          []string            `json:"unfired_faults,omitempty"`
+	BudgetAbort      bool                `json:"budget_aborted,omitempty"`
+	AgentFailed      bool                `json:"agent_failed,omitempty"`
+	Error            string              `json:"error,omitempty"`
+	Teardown         string              `json:"teardown_error,omitempty"`
 }
 
 // SuiteResult captures the aggregate outcome of an afc run invocation.
@@ -116,7 +116,7 @@ func RunSuite(ctx context.Context, spec *config.Spec, specPath string, scenarioF
 	if res.ExitCode == 0 && hasFailure {
 		res.ExitCode = 1
 	}
-	if ctx.Err() != nil && res.ExitCode == 0 {
+	if ctx.Err() != nil {
 		res.ExitCode = 2
 	}
 	res.FinishedAt = time.Now().UTC()

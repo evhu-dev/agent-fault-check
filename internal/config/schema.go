@@ -104,6 +104,9 @@ type Assertion struct {
 	Pattern           string     `yaml:"pattern"`
 	Key               string     `yaml:"key"`
 	Path              string     `yaml:"path"`
+
+	LineNumber   int `yaml:"-" json:"-"`
+	ColumnNumber int `yaml:"-" json:"-"`
 }
 
 // CallMatch selects HTTP calls for budget assertions.

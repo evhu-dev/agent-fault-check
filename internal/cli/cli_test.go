@@ -1,6 +1,27 @@
 package cli
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/agent-fault-check/afc/internal/report"
+	"github.com/agent-fault-check/afc/internal/runner"
+)
+
+func TestReportWriteFailureDoesNotSkipOtherFormat(t *testing.T) {
+	dir := t.TempDir()
+	if err := report.WriteProReport("junit", runner.SuiteResult{}, filepath.Join(dir, "probe.xml")); err != nil {
+		t.Skipf("requires Pro reporters: %v", err)
+	}
+	junit := filepath.Join(dir, "result.xml")
+	if code := writeRequestedReports(runner.SuiteResult{ExitCode: 1}, dir, junit); code != 2 {
+		t.Fatalf("exit code = %d, want 2", code)
+	}
+	if _, err := os.Stat(junit); err != nil {
+		t.Fatalf("JUnit report was not written: %v", err)
+	}
+}
 
 func TestCLIBasicAndPositionalArgRejection(t *testing.T) {
 	if code := Run(nil); code != 2 {

@@ -18,3 +18,5 @@
 | `redis_key_absent` | Pro / Team | Asserts a Redis key (e.g. distributed lock) does not exist after the run. |
 | `redis_key_count` | Pro / Team | Uses deduplicated Redis `SCAN` on `pattern` and asserts exact `expected` key count. |
 | `http_state_count` | Pro / Team | Queries an HTTP state endpoint returning a JSON integer (`1`) or `{"count": 1}` and asserts exact `expected` count. |
+
+> **Timeout fault contract:** For `commit_then_fail` with `inject.kind: timeout`, `hold_ms` must exceed your agent's HTTP client read timeout so the client disconnects first. If `hold_ms` expires before the client disconnects, the proxy returns `504` and records the fault as unfired (`AFC104`). To test a gateway `504` directly, use `inject: { kind: http_error, status: 504 }`.
