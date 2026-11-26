@@ -83,6 +83,5 @@ Paid report modes (`sarif`, `junit`, `both`) require `release-repository` pointi
 | SARIF 2.1.0 PR annotations & JUnit XML | — | Included | Included |
 | Priority support & upcoming MCP-stdio / trace packs | — | — | Included |
 
-Need a hands-on reliability review? See the [1-Week AI-Agent Reliability Audit + Team License ($2,500)](https://buy.polar.sh/polar_cl_EQdMor7Ww0Su4iXB7QAyg217EH9ccuU3GJjCQ0Khyji).
 
 See [docs/SECURITY.md](docs/SECURITY.md) for CI trust boundaries and security controls.
