@@ -10,6 +10,7 @@ func TestRedactSecrets(t *testing.T) {
 		"and redis://:redispass@127.0.0.1:6379/0 " +
 		"with Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 " +
 		"key=AFC_PRO_-00000000-0000-0000-0000-000000000000 " +
+		"key2=AFCPRO-11111111-1111-1111-1111-111111111111 " +
 		"token=ghp_1234567890abcdefghij123456 " +
 		"OPENAI_API_KEY=sk-proj-1234567890abcdefghijklmnop"
 
@@ -19,6 +20,7 @@ func TestRedactSecrets(t *testing.T) {
 		"redispass",
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
 		"00000000-0000-0000-0000-000000000000",
+		"11111111-1111-1111-1111-111111111111",
 		"ghp_1234567890abcdefghij123456",
 		"sk-proj-1234567890abcdefghijklmnop",
 	} {

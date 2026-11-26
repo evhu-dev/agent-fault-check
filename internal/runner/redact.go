@@ -7,8 +7,8 @@ var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b((?:postgres(?:ql)?|rediss?|https?|amqp|mysql)://)([^/\s:@]*):([^@\s]+)@`),
 	// Bearer / Basic auth headers or tokens
 	regexp.MustCompile(`(?i)\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}`),
-	// Polar / AFC license keys
-	regexp.MustCompile(`\bAFC_(?:PRO|TEAM)_[A-Za-z0-9_-]{8,}`),
+	// Polar / AFC license keys (AFC_PRO_..., AFCPRO-..., AFCTEAM-...)
+	regexp.MustCompile(`\bAFC_?(?:PRO|TEAM)[A-Za-z0-9_-]{8,}`),
 	// Common API keys & GitHub tokens
 	regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})`),
 	// Sensitive KEY=VALUE assignments

@@ -73,12 +73,16 @@ Paid report modes (`sarif`, `junit`, `both`) require `release-repository` pointi
 
 ## Editions & Pricing
 
-| Capability | Free (Apache-2.0) | Pro ($19/mo · Polar) |
-| :--- | :--- | :--- |
-| Scenarios per run | Up to 3 | Unlimited |
-| HTTP proxy & all fault strategies | Included | Included |
-| Postgres, `operation_attempts`, `max_tool_calls` | Included | Included |
-| Redis & HTTP state assertion packs | — | Included |
-| SARIF 2.1.0 PR annotations & JUnit XML | — | Included |
+| Capability | Free (Apache-2.0) | [Pro ($29/mo · 14-day trial)](https://buy.polar.sh/polar_cl_sOS2ZlhspTGEIduyBMAXwPMExlM8WNzBK6Khk0FyC4p) | [Team ($99/mo · 14-day trial)](https://buy.polar.sh/polar_cl_EuoNFqEKjwiVY8lMUkx752HmKYTo6JShkHQ8L4PGhJa) |
+| :--- | :--- | :--- | :--- |
+| Repositories | Unlimited | Up to 3 repos | Unlimited |
+| Scenarios per run | Up to 3 | Unlimited | Unlimited |
+| HTTP proxy & all fault strategies | Included | Included | Included |
+| Postgres, `operation_attempts`, `max_tool_calls` | Included | Included | Included |
+| Redis & HTTP state assertion packs | — | Included | Included |
+| SARIF 2.1.0 PR annotations & JUnit XML | — | Included | Included |
+| Priority support & upcoming MCP-stdio / trace packs | — | — | Included |
+
+Need a hands-on reliability review? See the [1-Week AI-Agent Reliability Audit + Team License ($2,500)](https://buy.polar.sh/polar_cl_EQdMor7Ww0Su4iXB7QAyg217EH9ccuU3GJjCQ0Khyji).
 
 See [docs/SECURITY.md](docs/SECURITY.md) for CI trust boundaries and security controls.
