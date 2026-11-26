@@ -73,7 +73,7 @@ Paid report modes (`sarif`, `junit`, `both`) require `release-repository` pointi
 
 ## Editions & Pricing
 
-| Capability | Free (Apache-2.0) | [Pro ($29/mo · 14-day trial)](https://buy.polar.sh/polar_cl_sOS2ZlhspTGEIduyBMAXwPMExlM8WNzBK6Khk0FyC4p) | [Team ($99/mo · 14-day trial)](https://buy.polar.sh/polar_cl_EuoNFqEKjwiVY8lMUkx752HmKYTo6JShkHQ8L4PGhJa) |
+| Capability | Free (Apache-2.0) | [Pro ($29/mo · 7-day trial)](https://buy.polar.sh/polar_cl_sOS2ZlhspTGEIduyBMAXwPMExlM8WNzBK6Khk0FyC4p) | [Team ($99/mo · 7-day trial)](https://buy.polar.sh/polar_cl_EuoNFqEKjwiVY8lMUkx752HmKYTo6JShkHQ8L4PGhJa) |
 | :--- | :--- | :--- | :--- |
 | Repositories | Unlimited | Up to 3 repos | Unlimited |
 | Scenarios per run | Up to 3 | Unlimited | Unlimited |
