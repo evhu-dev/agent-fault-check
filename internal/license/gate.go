@@ -13,7 +13,7 @@ const MaxFreeScenarios = 3
 
 // UpgradeURL is the checkout URL printed in entitlement error messages.
 // Can be overridden at build time via -ldflags.
-var UpgradeURL = "https://polar.sh/evhu-dev"
+var UpgradeURL = "https://afc.evhu.net/#pricing"
 
 // Tier represents the active entitlement level.
 type Tier string
