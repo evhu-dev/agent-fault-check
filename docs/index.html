@@ -100,6 +100,20 @@
       margin: 0 auto 28px;
     }
     .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .demo-showcase {
+      margin: 40px auto 0;
+      max-width: 920px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #090c1d;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(122, 32, 72, 0.25);
+    }
+    .demo-showcase img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
 
     .terminal {
       margin: 26px auto 0;
@@ -265,7 +279,9 @@
         <a class="btn btn-primary" href="#pricing">View Plans &amp; Pricing</a>
         <a class="btn btn-outline" href="https://github.com/evhu-dev/agent-fault-check">Start Free on GitHub</a>
       </div>
-
+      <figure class="demo-showcase">
+        <img src="./afc-demo.gif" alt="End-to-end demo of agent-fault-check: injecting commit_then_fail, catching a duplicate write in PostgreSQL, verifying the idempotency fix with SARIF output, and gating PRs in GitHub Actions" width="1000" height="562">
+      </figure>
     </section>
 
     <section id="workflow-diagram">
