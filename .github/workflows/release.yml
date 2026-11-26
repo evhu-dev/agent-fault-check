@@ -1,0 +1,296 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump to tag and release from main"
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+      tag:
+        description: "Optional explicit semver tag (e.g. v0.2.0), overrides bump"
+        type: string
+        required: false
+
+permissions:
+  contents: write
+  issues: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.state == 'open' &&
+       github.event.issue.pull_request == null &&
+       contains(github.event.issue.labels.*.name, 'release-approval') &&
+       github.event.comment.user.login == 'evhu-dev' &&
+       github.event.comment.author_association == 'OWNER' &&
+       startsWith(github.event.comment.body, '/approve'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+      major_minor: ${{ steps.resolve.outputs.major_minor }}
+      sha: ${{ steps.resolve.outputs.sha }}
+      issue_number: ${{ steps.resolve.outputs.issue_number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || 'main' }}
+          fetch-depth: 0
+
+      - name: Resolve and create release tag
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          INPUT_BUMP: ${{ inputs.bump }}
+          INPUT_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.RELEASE_TAG_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          compute_bump() {
+            local last_tag="$1"
+            local bump="$2"
+            local clean="${last_tag#v}"
+            local major minor patch
+            IFS='.' read -r major minor patch <<< "${clean}"
+            case "${bump}" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+              *) echo "error: invalid bump '${bump}'" >&2; exit 1 ;;
+            esac
+            echo "v${major}.${minor}.${patch}"
+          }
+
+          if [ "${EVENT_NAME}" = "push" ]; then
+            TAG="${REF_NAME}"
+            SHA=$(git rev-parse HEAD)
+            ISSUE_NUM=""
+          else
+            git fetch origin main --tags
+            LAST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || true)
+            if [ -z "${LAST_TAG}" ]; then
+              LAST_TAG="v0.0.0"
+            fi
+
+            if [ "${EVENT_NAME}" = "issue_comment" ]; then
+              if [ "${ISSUE_AUTHOR}" != "github-actions[bot]" ] && [ "${ISSUE_AUTHOR}" != "evhu-dev" ]; then
+                echo "error: refusing approval on issue opened by untrusted user '${ISSUE_AUTHOR}'" >&2
+                exit 1
+              fi
+
+              FIRST_LINE=$(printf '%s' "${COMMENT_BODY}" | head -n 1 | tr -d '\r' | xargs)
+              if ! printf '%s' "${FIRST_LINE}" | grep -Eq '^/approve( (patch|minor|major|v[0-9]+\.[0-9]+\.[0-9]+))?$'; then
+                echo "error: comment must be '/approve', '/approve patch|minor|major', or '/approve vX.Y.Z'" >&2
+                exit 1
+              fi
+
+              ARG=$(printf '%s' "${FIRST_LINE}" | awk '{print $2}')
+              META_LINE=$(printf '%s' "${ISSUE_BODY}" | grep -Eo '<!-- afc-release: sha=[0-9a-f]{40} tag=v[0-9]+\.[0-9]+\.[0-9]+ last_tag=v[0-9]+\.[0-9]+\.[0-9]+ -->' | head -n 1 || true)
+              if [ -z "${META_LINE}" ]; then
+                echo "error: missing release metadata marker in issue body" >&2
+                exit 1
+              fi
+
+              SHA=$(printf '%s' "${META_LINE}" | sed -E 's/.* sha=([0-9a-f]{40}).*/\1/')
+              PROPOSED_TAG=$(printf '%s' "${META_LINE}" | sed -E 's/.* tag=(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+              if ! git merge-base --is-ancestor "${SHA}" origin/main; then
+                echo "error: target commit ${SHA} is not on origin/main" >&2
+                exit 1
+              fi
+
+              if [ -z "${ARG}" ]; then
+                TAG="${PROPOSED_TAG}"
+              elif [[ "${ARG}" == v* ]]; then
+                TAG="${ARG}"
+              else
+                TAG=$(compute_bump "${LAST_TAG}" "${ARG}")
+              fi
+
+              ISSUE_NUM="${ISSUE_NUMBER}"
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}/reactions" -f content=rocket >/dev/null || true
+            else
+              SHA=$(git rev-parse origin/main)
+              ISSUE_NUM=""
+              if [ -n "${INPUT_TAG}" ]; then
+                if ! printf '%s' "${INPUT_TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+                  echo "error: explicit tag '${INPUT_TAG}' must match vX.Y.Z" >&2
+                  exit 1
+                fi
+                TAG="${INPUT_TAG}"
+              else
+                TAG=$(compute_bump "${LAST_TAG}" "${INPUT_BUMP}")
+              fi
+            fi
+
+            if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+              echo "error: tag ${TAG} already exists" >&2
+              exit 1
+            fi
+
+            TAG_OBJ_SHA=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+              -f tag="${TAG}" \
+              -f message="Release ${TAG}" \
+              -f object="${SHA}" \
+              -f type="commit" \
+              --jq '.sha')
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${TAG}" \
+              -f sha="${TAG_OBJ_SHA}" >/dev/null
+          fi
+
+          VERSION="${TAG#v}"
+          MAJOR_MINOR=$(printf '%s' "${VERSION}" | awk -F. '{print $1 "." $2}')
+          {
+            echo "tag=${TAG}"
+            echo "version=${VERSION}"
+            echo "major_minor=${MAJOR_MINOR}"
+            echo "sha=${SHA}"
+            echo "issue_number=${ISSUE_NUM}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "Resolved release tag=${TAG} version=${VERSION} sha=${SHA}"
+
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: prepare
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
+      - name: Run pre-release vet and race test suite
+        run: |
+          go mod verify
+          go vet ./...
+          go test -timeout 60s -race ./...
+
+  goreleaser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [prepare, verify]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
+      - name: Extract curated release notes from approval issue
+        id: notes
+        if: needs.prepare.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ needs.prepare.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          BODY=$(gh issue view "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json body --jq '.body')
+          python3 - "${BODY}" <<'PY' > /tmp/release-notes.md
+          import re, sys
+          m = re.search(r'<!--\s*release-notes:start\s*-->(.*?)<!--\s*release-notes:end\s*-->', sys.argv[1], re.S)
+          if m and m.group(1).strip():
+              print(m.group(1).strip())
+          PY
+          if [ -s /tmp/release-notes.md ]; then
+            echo "args=release --clean --release-notes=/tmp/release-notes.md" >> "${GITHUB_OUTPUT}"
+          else
+            echo "args=release --clean" >> "${GITHUB_OUTPUT}"
+          fi
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: v2.8.2
+          args: ${{ steps.notes.outputs.args || 'release --clean' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AFC_UPGRADE_URL: ${{ secrets.AFC_UPGRADE_URL }}
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [prepare, goreleaser]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.version }}
+            type=raw,value=${{ needs.prepare.outputs.major_minor }}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            AFC_VERSION=${{ needs.prepare.outputs.tag }}
+            AFC_COMMIT=${{ needs.prepare.outputs.sha }}
+            AFC_UPGRADE_URL=${{ secrets.AFC_UPGRADE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  close-approval:
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.issue_number != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [prepare, goreleaser, docker]
+    steps:
+      - name: Update approval issue with release status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ needs.prepare.outputs.issue_number }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          GORELEASER_RESULT: ${{ needs.goreleaser.result }}
+          DOCKER_RESULT: ${{ needs.docker.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ "${GORELEASER_RESULT}" = "success" ] && [ "${DOCKER_RESULT}" = "success" ]; then
+            gh issue comment "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body "Released **\`${TAG}\`**! Binaries published to https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG} and Docker images pushed to GHCR. ([Workflow run](${RUN_URL}))"
+            gh issue close "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" --reason completed
+          else
+            gh issue comment "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --body "@evhu-dev Release **\`${TAG}\`** encountered a failure (goreleaser: \`${GORELEASER_RESULT}\`, docker: \`${DOCKER_RESULT}\`). See [workflow run](${RUN_URL})."
+          fi
