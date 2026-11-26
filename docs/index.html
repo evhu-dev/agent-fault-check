@@ -183,6 +183,36 @@
       border-radius: 5px;
       font-size: 0.88em;
     }
+        .diagram-wrap {
+      background: #090c1d;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      overflow-x: auto;
+      margin-bottom: 22px;
+    }
+    .diagram-wrap svg {
+      width: 100%;
+      height: auto;
+      min-width: 720px;
+      display: block;
+    }
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 18px;
+    }
+    .compare-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+    }
+    .compare-card.problem { border-left: 3px solid #f87171; }
+    .compare-card.solution { border-left: 3px solid var(--green); }
+    .compare-card h3 { margin: 0 0 8px; font-size: 1rem; }
+    .compare-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
     footer {
       border-top: 1px solid var(--border);
       padding: 36px 0;
@@ -243,6 +273,118 @@
 <span class="fail">FAIL</span>  no_duplicate_writes: duplicate mutation detected   <span class="dim">[AFC102]</span>
 <span class="ok">SARIF</span> wrote afc-results.sarif (GitHub Code Scanning ready)
 <span class="dim">Exit code: 1 (PR merge gate blocked)</span></pre>
+      </div>
+    </section>
+
+    <section id="workflow-diagram">
+      <h2>How <code>afc</code> Fits Into Your CI Workflow</h2>
+      <p class="sub">
+        AI agents fail in production when tool APIs time out, drop responses after writing, or return corrupt JSON.
+        <code>afc</code> sits between your agent and disposable test tools in CI to catch those bugs deterministically before merge.
+      </p>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 980 395" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Workflow diagram showing how agent-fault-check intercepts AI agent tool calls in CI, injects faults like commit_then_fail, verifies Postgres/Redis/HTTP state, and blocks buggy PRs before production.">
+          <defs>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#8f9cc7"/>
+            </marker>
+            <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#e58fb4"/>
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399"/>
+            </marker>
+            <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f87171"/>
+            </marker>
+          </defs>
+
+          <!-- Outer CI Runner Frame -->
+          <rect x="12" y="12" width="956" height="371" rx="14" fill="#0f1533" stroke="#2d3975" stroke-width="1.5" stroke-dasharray="6 4"/>
+          <text x="30" y="38" fill="#a6b0d1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="600">YOUR CI RUNNER / LOCAL DEV  (GitHub Actions · Docker · Laptop — Zero Telemetry)</text>
+
+          <!-- Node 1: PR / Trigger -->
+          <rect x="30" y="64" width="150" height="84" rx="10" fill="#151c42" stroke="#2d3975" stroke-width="1.5"/>
+          <text x="105" y="92" text-anchor="middle" fill="#e58fb4" font-family="ui-monospace, monospace" font-size="11" font-weight="700">1. PULL REQUEST</text>
+          <text x="105" y="114" text-anchor="middle" fill="#eef1fa" font-family="-apple-system, sans-serif" font-size="13" font-weight="700">afc run</text>
+          <text x="105" y="133" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="10.5">chaos-spec.yaml</text>
+
+          <!-- Arrow 1 -> 2 -->
+          <line x1="180" y1="106" x2="218" y2="106" stroke="#8f9cc7" stroke-width="1.8" marker-end="url(#arrow-muted)"/>
+
+          <!-- Node 2: Your AI Agent -->
+          <rect x="224" y="64" width="176" height="84" rx="10" fill="#1E2761" stroke="#4555a3" stroke-width="1.5"/>
+          <text x="312" y="90" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="11" font-weight="700">2. YOUR AI AGENT</text>
+          <text x="312" y="112" text-anchor="middle" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="13" font-weight="700">Python / TS / Go</text>
+          <text x="312" y="131" text-anchor="middle" fill="#cfd6ef" font-family="ui-monospace, monospace" font-size="10">LangGraph · CrewAI · SDK</text>
+
+          <!-- Arrow 2 -> 3 (Tool Call) -->
+          <line x1="400" y1="90" x2="466" y2="90" stroke="#8f9cc7" stroke-width="1.8" marker-end="url(#arrow-muted)"/>
+          <text x="433" y="81" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="9.5">POST /orders</text>
+
+          <!-- Arrow 3 -> 2 (Injected Fault) -->
+          <line x1="466" y1="126" x2="404" y2="126" stroke="#e58fb4" stroke-width="1.8" marker-end="url(#arrow-accent)"/>
+          <text x="435" y="142" text-anchor="middle" fill="#e58fb4" font-family="ui-monospace, monospace" font-size="9.5">502 / timeout!</text>
+
+          <!-- Node 3: afc Fault Proxy (Highlighted Secondary #7A2048) -->
+          <rect x="472" y="56" width="218" height="102" rx="10" fill="#2a1432" stroke="#7A2048" stroke-width="2"/>
+          <rect x="486" y="68" width="190" height="20" rx="5" fill="#7A2048"/>
+          <text x="581" y="82" text-anchor="middle" fill="#ffffff" font-family="ui-monospace, monospace" font-size="10.5" font-weight="700">3. afc FAULT PROXY</text>
+          <text x="581" y="109" text-anchor="middle" fill="#eef1fa" font-family="-apple-system, sans-serif" font-size="12.5" font-weight="700">Injects Deterministic Faults</text>
+          <text x="581" y="128" text-anchor="middle" fill="#f3b5cf" font-family="ui-monospace, monospace" font-size="10">commit_then_fail · 502 · timeout</text>
+          <text x="581" y="144" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="10">fail_before_upstream · bad JSON</text>
+
+          <!-- Arrow 3 -> 4 (Upstream Write) -->
+          <line x1="690" y1="106" x2="742" y2="106" stroke="#8f9cc7" stroke-width="1.8" marker-end="url(#arrow-muted)"/>
+          <text x="716" y="96" text-anchor="middle" fill="#34d399" font-family="ui-monospace, monospace" font-size="9.5">201 OK</text>
+
+          <!-- Node 4: Disposable Upstream API + DB -->
+          <rect x="748" y="56" width="200" height="102" rx="10" fill="#151c42" stroke="#2d3975" stroke-width="1.5"/>
+          <text x="848" y="82" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="10.5" font-weight="700">4. TEST TOOL &amp; STATE</text>
+          <text x="848" y="104" text-anchor="middle" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="13" font-weight="700">Upstream API + Stores</text>
+          <text x="848" y="124" text-anchor="middle" fill="#cfd6ef" font-family="ui-monospace, monospace" font-size="10">Postgres · Redis · HTTP</text>
+          <text x="848" y="143" text-anchor="middle" fill="#fbbf24" font-family="ui-monospace, monospace" font-size="9.5">Row committed before 502!</text>
+
+          <!-- Downward arrow from Proxy + State to Assertion Engine -->
+          <line x1="581" y1="158" x2="581" y2="212" stroke="#8f9cc7" stroke-width="1.8" marker-end="url(#arrow-muted)"/>
+          <line x1="848" y1="158" x2="848" y2="246" stroke="#8f9cc7" stroke-width="1.8"/>
+          <line x1="848" y1="246" x2="710" y2="246" stroke="#8f9cc7" stroke-width="1.8" marker-end="url(#arrow-muted)"/>
+          <text x="780" y="238" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="9.5">Query real state</text>
+
+          <!-- Node 5: Assertion & Budget Engine -->
+          <rect x="444" y="218" width="260" height="72" rx="10" fill="#1E2761" stroke="#4555a3" stroke-width="1.5"/>
+          <text x="574" y="242" text-anchor="middle" fill="#e58fb4" font-family="ui-monospace, monospace" font-size="10.5" font-weight="700">5. ASSERTIONS &amp; BUDGETS</text>
+          <text x="574" y="262" text-anchor="middle" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="12.5" font-weight="700">sql_row_count · redis · max_tool_calls</text>
+          <text x="574" y="279" text-anchor="middle" fill="#a6b0d1" font-family="ui-monospace, monospace" font-size="10">Verifies retry + exact DB row count</text>
+
+          <!-- Split to FAIL (Blocked PR) and PASS (Safe to Merge) -->
+          <path d="M 444 242 L 368 242 L 368 232 L 326 232" stroke="#f87171" stroke-width="1.8" fill="none" marker-end="url(#arrow-red)"/>
+          <path d="M 444 268 L 368 268 L 368 326 L 326 326" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrow-green)"/>
+
+          <!-- Outcome A: Buggy Agent -> Blocked PR -->
+          <rect x="30" y="196" width="290" height="74" rx="10" fill="#2a1320" stroke="#f87171" stroke-width="1.5"/>
+          <text x="48" y="220" fill="#f87171" font-family="ui-monospace, monospace" font-size="11" font-weight="700">EXIT 1 · PR BLOCKED (BUG CAUGHT)</text>
+          <text x="48" y="240" fill="#eef1fa" font-family="-apple-system, sans-serif" font-size="12.5" font-weight="600">Agent retried without idempotency → 2 rows</text>
+          <text x="48" y="258" fill="#f3b5cf" font-family="ui-monospace, monospace" font-size="10">SARIF AFC101 + JUnit + redacted timeline</text>
+
+          <!-- Outcome B: Resilient Agent -> Safe to Merge -->
+          <rect x="30" y="290" width="290" height="74" rx="10" fill="#0f2926" stroke="#34d399" stroke-width="1.5"/>
+          <text x="48" y="314" fill="#34d399" font-family="ui-monospace, monospace" font-size="11" font-weight="700">EXIT 0 · PR APPROVED (RESILIENT)</text>
+          <text x="48" y="334" fill="#eef1fa" font-family="-apple-system, sans-serif" font-size="12.5" font-weight="600">Agent reused idempotency key → 1 row</text>
+          <text x="48" y="352" fill="#a7f3d0" font-family="ui-monospace, monospace" font-size="10">Safe to merge · zero duplicate writes</text>
+        </svg>
+      </div>
+
+      <div class="compare-grid">
+        <div class="compare-card problem">
+          <h3>The Problem Without <code>afc</code></h3>
+          <p>Unit tests mock happy paths. In production, a single dropped <code>201</code> response or mid-saga <code>500</code> causes AI agents to double-charge customers, leak Redis locks, or burn API budgets in retry loops.</p>
+        </div>
+        <div class="compare-card solution">
+          <h3>The Guarantee With <code>afc</code></h3>
+          <p>Every PR runs deterministic network faults against real disposable Postgres, Redis, and HTTP endpoints—blocking regressions with exit code <code>1</code> and GitHub Code Scanning (SARIF) annotations before code ships.</p>
+        </div>
       </div>
     </section>
 
