@@ -15,7 +15,7 @@ import (
 	"github.com/agent-fault-check/afc/internal/faults"
 )
 
-// TestProxyP95OverheadUnder2ms verifies the <= 2ms p95 proxy latency target:
+// TestProxyP95OverheadUnder2ms verifies the SPEC.md §5 latency target:
 // loopback upstream, warm connections, 1 KiB JSON payloads, 10 concurrent clients,
 // tracing on, no faults => p95(proxied) - p95(direct) <= 2ms.
 func TestProxyP95OverheadUnder2ms(t *testing.T) {

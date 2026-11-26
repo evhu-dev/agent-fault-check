@@ -73,7 +73,7 @@ runs:
           CURL_AUTH=(-H "Authorization: Bearer ${AFC_RELEASE_TOKEN}")
         fi
         if [ "${AFC_VERSION}" = "latest" ]; then
-          AFC_VERSION=$(curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "${CURL_AUTH[@]}" \
+          AFC_VERSION=$(curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors ${CURL_AUTH[@]+"${CURL_AUTH[@]}"} \
             "https://api.github.com/repos/${DOWNLOAD_REPO}/releases/latest" \
             | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
           if [ -z "${AFC_VERSION}" ]; then
@@ -85,8 +85,8 @@ runs:
         BASE_URL="https://github.com/${DOWNLOAD_REPO}/releases/download/${AFC_VERSION}"
         TMPDIR=$(mktemp -d)
         trap 'rm -rf "$TMPDIR"' EXIT
-        curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "${CURL_AUTH[@]}" "${BASE_URL}/${TARBALL}" -o "${TMPDIR}/${TARBALL}"
-        curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors "${CURL_AUTH[@]}" "${BASE_URL}/checksums.txt" -o "${TMPDIR}/checksums.txt"
+        curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors ${CURL_AUTH[@]+"${CURL_AUTH[@]}"} "${BASE_URL}/${TARBALL}" -o "${TMPDIR}/${TARBALL}"
+        curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors ${CURL_AUTH[@]+"${CURL_AUTH[@]}"} "${BASE_URL}/checksums.txt" -o "${TMPDIR}/checksums.txt"
         (
           cd "${TMPDIR}"
           CHECKSUM_LINE=$(awk -v f="${TARBALL}" '$2 == f { print; found=1 } END { exit !found }' checksums.txt)
