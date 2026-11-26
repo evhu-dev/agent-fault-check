@@ -50,20 +50,20 @@ afc run --spec examples/checkout/chaos-spec.yaml --verbose
 
 ### Free (Public OSS Release — Console Output)
 ```yaml
-- uses: evhu-dev/agent-fault-check@v0.1.0
+- uses: evhu-dev/agent-fault-check@v0.2.0
   with:
     spec-path: "examples/checkout/chaos-spec.yaml"
-    version: "v0.1.0"
+    version: "v0.2.0"
     report-mode: "console"
 ```
 
 ### Pro (Commercial Release — SARIF / JUnit)
 Paid report modes (`sarif`, `junit`, `both`) require `release-repository` pointing to the public Pro binary release repository (`evhu-dev/agent-fault-check-releases`) along with a Polar license key:
 ```yaml
-- uses: evhu-dev/agent-fault-check@v0.1.0
+- uses: evhu-dev/agent-fault-check@v0.2.0
   with:
     spec-path: "examples/checkout/chaos-spec.yaml"
-    version: "v0.1.0"
+    version: "v0.2.0"
     release-repository: "evhu-dev/agent-fault-check-releases"
     report-mode: "sarif" # console | junit | sarif | both
     license-key: ${{ secrets.AFC_LICENSE_KEY }}

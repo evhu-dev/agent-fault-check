@@ -245,7 +245,7 @@
       <a class="brand" href="./">
         <img src="./logo.png" alt="evhu logo" width="28" height="28" style="border-radius:6px;display:block;">
         <span>agent-fault-check</span>
-        <span class="badge">v0.1.0</span>
+        <span class="badge">v0.2.0</span>
       </a>
       <nav class="nav-links">
         <a href="./#how-it-works">How It Works</a>
@@ -288,7 +288,7 @@
         <p><code>afc</code> ships as a single static binary for Linux (<code>amd64</code>, <code>arm64</code>) and macOS (<code>arm64</code>, <code>amd64</code>), plus multi-arch Docker images.</p>
 
         <h3>Install OSS Core (Apache-2.0)</h3>
-        <pre><code>VERSION="v0.1.0"
+        <pre><code>VERSION="v0.2.0"
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 TARBALL="afc_${VERSION#v}_${OS}_${ARCH}.tar.gz"
@@ -302,7 +302,7 @@ afc version</code></pre>
 
         <h3>Install Pro / Team Binary <span class="badge-pro">PRO / TEAM</span></h3>
         <p>Commercial binaries (<code>afc-pro</code>) are hosted publicly at <code>evhu-dev/agent-fault-check-releases</code> and unlock Pro/Team features when <code>AFC_LICENSE_KEY</code> is set.</p>
-        <pre><code>VERSION="v0.1.0"
+        <pre><code>VERSION="v0.2.0"
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 TARBALL="afc-pro_${VERSION#v}_${OS}_${ARCH}.tar.gz"
@@ -315,8 +315,8 @@ sudo install -m 0755 afc /usr/local/bin/afc
 afc version</code></pre>
 
         <h3>Docker (GHCR)</h3>
-        <pre><code>docker pull ghcr.io/evhu-dev/agent-fault-check:0.1.0
-docker run --rm -v "$PWD:/work" -w /work ghcr.io/evhu-dev/agent-fault-check:0.1.0 validate --spec chaos-spec.yaml</code></pre>
+        <pre><code>docker pull ghcr.io/evhu-dev/agent-fault-check:0.2.0
+docker run --rm -v "$PWD:/work" -w /work ghcr.io/evhu-dev/agent-fault-check:0.2.0 validate --spec chaos-spec.yaml</code></pre>
 
         <h3>Validate &amp; Run Your First Suite</h3>
         <pre><code>afc validate --spec chaos-spec.yaml
@@ -541,10 +541,10 @@ scenarios:
 
         <h3>OSS Core Workflow (Console Output)</h3>
         <pre><code>- name: Run agent-fault-check (OSS)
-  uses: evhu-dev/agent-fault-check@v0.1.0
+  uses: evhu-dev/agent-fault-check@v0.2.0
   with:
     spec-path: "chaos-spec.yaml"
-    version: "v0.1.0"
+    version: "v0.2.0"
     report-mode: "console"</code></pre>
 
         <h3>Pro / Team Workflow (SARIF Code Scanning + JUnit) <span class="badge-pro">PRO / TEAM</span></h3>
@@ -557,10 +557,10 @@ steps:
 
   - name: Run agent-fault-check Pro
     id: afc
-    uses: evhu-dev/agent-fault-check@v0.1.0
+    uses: evhu-dev/agent-fault-check@v0.2.0
     with:
       spec-path: "chaos-spec.yaml"
-      version: "v0.1.0"
+      version: "v0.2.0"
       release-repository: "evhu-dev/agent-fault-check-releases"
       license-key: ${{ secrets.AFC_LICENSE_KEY }}
       report-mode: "both"
@@ -578,7 +578,7 @@ steps:
           </thead>
           <tbody>
             <tr><td><code>spec-path</code></td><td>Input</td><td>Path to <code>chaos-spec.yaml</code> (default: <code>chaos-spec.yaml</code>).</td></tr>
-            <tr><td><code>version</code></td><td>Input (required)</td><td>Pinned release tag (e.g. <code>v0.1.0</code>).</td></tr>
+            <tr><td><code>version</code></td><td>Input (required)</td><td>Pinned release tag (e.g. <code>v0.2.0</code>).</td></tr>
             <tr><td><code>report-mode</code></td><td>Input</td><td><code>console</code> (OSS) or <code>sarif</code>, <code>junit</code>, <code>both</code> (requires <code>release-repository</code>).</td></tr>
             <tr><td><code>release-repository</code></td><td>Input</td><td>Set to <code>evhu-dev/agent-fault-check-releases</code> to download Pro binaries.</td></tr>
             <tr><td><code>license-key</code></td><td>Input</td><td>Your Polar license key from <code>${{ secrets.AFC_LICENSE_KEY }}</code>.</td></tr>

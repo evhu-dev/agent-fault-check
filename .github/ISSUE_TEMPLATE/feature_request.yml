@@ -1,0 +1,16 @@
+name: Feature Request
+description: Suggest a new fault strategy, assertion store, or CI integration
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What AI-agent failure mode or workflow are you trying to test?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Example `chaos-spec.yaml` snippet or CLI behavior.

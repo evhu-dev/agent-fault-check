@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation & FAQ
+    url: https://afc.evhu.net/docs.html
+    about: Onboarding guide, chaos-spec.yaml reference, SARIF rules, and troubleshooting.
+  - name: Pro & Team Priority Support (Email)
+    url: mailto:support@evhu.net
+    about: Email support@evhu.net with your license key prefix for 1-business-day response.

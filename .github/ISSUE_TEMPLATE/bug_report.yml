@@ -1,0 +1,26 @@
+name: Bug Report
+description: Report a bug in afc CLI, fault proxy, assertions, or GitHub Action
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: afc version
+      description: Output of `afc version`
+      placeholder: "afc 0.2.0 (linux/amd64)"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Share your minimal `chaos-spec.yaml` (redact any secrets) and command used.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Expected vs. actual behavior
+      description: Include `--verbose` output and exit code.
+    validations:
+      required: true
