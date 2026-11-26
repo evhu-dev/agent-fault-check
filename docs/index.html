@@ -233,11 +233,15 @@
 <body>
   <header>
     <div class="container nav">
-      <a class="brand" href="./">
-        <img src="./logo.png" alt="evhu logo" width="28" height="28" style="border-radius:6px;display:block;">
-        <span>agent-fault-check</span>
-        <span class="badge">v0.2.0</span>
-      </a>
+      <div class="brand">
+        <a class="brand" href="./">
+          <img src="./logo.png" alt="evhu logo" width="28" height="28" style="border-radius:6px;display:block;">
+          <span>agent-fault-check</span>
+        </a>
+        <a class="badge" data-release-link href="https://github.com/evhu-dev/agent-fault-check/releases/latest" target="_blank" rel="noopener" style="text-decoration:none;">
+          <span data-release-tag>v0.2.0</span> ↗
+        </a>
+      </div>
       <nav class="nav-links">
         <a href="#how-it-works">How It Works</a>
         <a href="#pricing">Pricing</a>
@@ -476,5 +480,29 @@
       </div>
     </div>
   </footer>
+  <script>
+    (async function () {
+      const cacheKey = "afc_latest_release_v1";
+      const apply = (r) => {
+        document.querySelectorAll("[data-release-tag]").forEach(el => { el.textContent = r.tag; });
+        document.querySelectorAll("[data-release-link]").forEach(el => { el.href = r.url; });
+      };
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+        if (cached && (Date.now() - cached.ts) < 600000) { apply(cached); return; }
+      } catch (_) {}
+      try {
+        const res = await fetch("https://api.github.com/repos/evhu-dev/agent-fault-check/releases/latest");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.tag_name) {
+            const r = { tag: data.tag_name, url: data.html_url || "https://github.com/evhu-dev/agent-fault-check/releases/latest", ts: Date.now() };
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(r)); } catch (_) {}
+            apply(r);
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
 </html>

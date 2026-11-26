@@ -20,7 +20,6 @@
       --accent-hover: #962859;
       --link: #e58fb4;
       --green: #34d399;
-      --amber: #fbbf24;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
     }
@@ -62,25 +61,22 @@
       gap: 10px;
     }
     .brand:hover { text-decoration: none; }
-    .badge {
+    .release-badge {
       font-size: 0.72rem;
       font-family: var(--mono);
       background: rgba(122, 32, 72, 0.24);
       color: #f3b5cf;
       border: 1px solid rgba(122, 32, 72, 0.55);
-      padding: 2px 8px;
+      padding: 2px 9px;
       border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
-    .badge-pro {
-      font-size: 0.7rem;
-      font-family: var(--mono);
-      background: rgba(122, 32, 72, 0.35);
-      color: #f9c6dc;
-      border: 1px solid rgba(122, 32, 72, 0.7);
-      padding: 1px 7px;
-      border-radius: 6px;
-      vertical-align: middle;
-      margin-left: 6px;
+    .release-badge:hover {
+      background: rgba(122, 32, 72, 0.42);
+      color: #fff;
+      text-decoration: none;
     }
     .nav-links { display: flex; gap: 20px; align-items: center; font-size: 0.92rem; flex-wrap: wrap; }
     .nav-links a:not(.btn) { color: var(--muted); }
@@ -99,7 +95,7 @@
 
     .docs-layout {
       display: grid;
-      grid-template-columns: 240px minmax(0, 1fr);
+      grid-template-columns: 250px minmax(0, 1fr);
       gap: 40px;
       padding: 36px 0 72px;
       align-items: start;
@@ -122,25 +118,30 @@
       font-weight: 700;
     }
     aside ul { list-style: none; padding: 0; margin: 0; }
-    aside li { margin-bottom: 7px; }
-    aside a { color: #cfd6ef; display: block; padding: 3px 6px; border-radius: 6px; }
-    aside a:hover { background: rgba(122, 32, 72, 0.2); color: #fff; text-decoration: none; }
-
-    article { min-width: 0; }
-    article section {
-      padding: 0 0 42px;
-      margin-bottom: 42px;
-      border-bottom: 1px solid var(--border);
-      scroll-margin-top: 88px;
+    aside li { margin-bottom: 5px; }
+    aside a {
+      color: #cfd6ef;
+      display: block;
+      padding: 6px 10px;
+      border-radius: 7px;
+      transition: background 0.12s, color 0.12s;
     }
-    article section:last-child { border-bottom: none; margin-bottom: 0; }
-    h1 { font-size: clamp(1.8rem, 3.5vw, 2.5rem); margin: 0 0 10px; letter-spacing: -0.02em; }
-    h2 { font-size: 1.5rem; margin: 0 0 12px; letter-spacing: -0.015em; }
-    h3 { font-size: 1.08rem; margin: 24px 0 8px; color: #fff; }
-    p { color: #cfd6ef; margin: 0 0 14px; }
-    ul, ol { color: #cfd6ef; padding-left: 22px; margin: 0 0 16px; }
-    li { margin-bottom: 6px; }
-    code {
+    aside a:hover { background: rgba(122, 32, 72, 0.22); color: #fff; text-decoration: none; }
+    aside a.current {
+      background: rgba(122, 32, 72, 0.34);
+      border-left: 3px solid var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    main#doc-content { min-width: 0; }
+    .md-body h1 { font-size: clamp(1.75rem, 3.2vw, 2.35rem); margin: 0 0 14px; letter-spacing: -0.02em; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .md-body h2 { font-size: 1.38rem; margin: 32px 0 12px; letter-spacing: -0.015em; }
+    .md-body h3 { font-size: 1.06rem; margin: 24px 0 8px; color: #fff; }
+    .md-body p { color: #cfd6ef; margin: 0 0 14px; }
+    .md-body ul, .md-body ol { color: #cfd6ef; padding-left: 22px; margin: 0 0 16px; }
+    .md-body li { margin-bottom: 6px; }
+    .md-body code {
       font-family: var(--mono);
       background: var(--surface-2);
       color: #f3f5fc;
@@ -148,7 +149,7 @@
       border-radius: 5px;
       font-size: 0.86em;
     }
-    pre {
+    .md-body pre {
       background: #090c1d;
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -160,62 +161,54 @@
       color: #dbe3f8;
       margin: 0 0 18px;
     }
-    pre code { background: none; padding: 0; font-size: inherit; }
-
-    .callout {
+    .md-body pre code { background: none; padding: 0; font-size: inherit; }
+    .md-body blockquote {
+      margin: 16px 0 20px;
       background: rgba(30, 39, 97, 0.55);
       border-left: 3px solid var(--accent);
       border-radius: 8px;
-      padding: 14px 16px;
-      margin: 16px 0 20px;
-      font-size: 0.93rem;
+      padding: 12px 16px;
       color: #dde3f7;
     }
-    .callout strong { color: #fff; }
-
-    table {
+    .md-body blockquote p:last-child { margin-bottom: 0; }
+    .md-body table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0 20px;
+      margin: 14px 0 22px;
       font-size: 0.9rem;
       display: block;
       overflow-x: auto;
     }
-    th, td {
+    .md-body th, .md-body td {
       text-align: left;
       padding: 10px 12px;
       border-bottom: 1px solid var(--border);
       vertical-align: top;
     }
-    th {
-      background: var(--surface);
-      color: #fff;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    td { color: #cfd6ef; }
+    .md-body th { background: var(--surface); color: #fff; font-weight: 600; white-space: nowrap; }
+    .md-body td { color: #cfd6ef; }
 
-    details {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 18px;
-      margin-bottom: 12px;
-    }
-    summary {
-      cursor: pointer;
-      font-weight: 600;
-      color: #fff;
-      list-style: none;
+    .doc-footer-nav {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 0.9rem;
     }
-    summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; color: var(--link); font-size: 1.2rem; font-weight: 700; }
-    details[open] summary::after { content: "−"; }
-    details p { margin: 12px 0 0; font-size: 0.93rem; }
+    .doc-pager { display: flex; gap: 12px; flex-wrap: wrap; }
+    .pager-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .pager-btn:hover { border-color: var(--link); text-decoration: none; }
 
     footer {
       border-top: 1px solid var(--border);
@@ -242,11 +235,15 @@
 <body>
   <header>
     <div class="container nav">
-      <a class="brand" href="./">
-        <img src="./logo.png" alt="evhu logo" width="28" height="28" style="border-radius:6px;display:block;">
-        <span>agent-fault-check</span>
-        <span class="badge">v0.2.0</span>
-      </a>
+      <div class="brand">
+        <a class="brand" href="./">
+          <img src="./logo.png" alt="evhu logo" width="28" height="28" style="border-radius:6px;display:block;">
+          <span>agent-fault-check</span>
+        </a>
+        <a class="release-badge" data-release-link href="https://github.com/evhu-dev/agent-fault-check/releases/latest" target="_blank" rel="noopener">
+          <span data-release-tag>v0.2.0</span> ↗
+        </a>
+      </div>
       <nav class="nav-links">
         <a href="./#how-it-works">How It Works</a>
         <a href="./#pricing">Pricing</a>
@@ -261,423 +258,16 @@
   <div class="container docs-layout">
     <aside aria-label="Documentation navigation">
       <div class="toc-title">Documentation</div>
-      <ul>
-        <li><a href="#quickstart">1. Quickstart &amp; Install</a></li>
-        <li><a href="#how-it-works">2. How the Proxy Works</a></li>
-        <li><a href="#chaos-spec">3. chaos-spec.yaml Reference</a></li>
-        <li><a href="#fault-strategies">4. Fault Strategies</a></li>
-        <li><a href="#assertions">5. State &amp; Budget Assertions</a></li>
-        <li><a href="#cli-reference">6. CLI Commands &amp; Exit Codes</a></li>
-        <li><a href="#github-action">7. GitHub Action &amp; CI Gates</a></li>
-        <li><a href="#sarif-rules">8. SARIF Rules (AFC101–201)</a></li>
-        <li><a href="#licensing">9. Pro &amp; Team Licensing</a></li>
-        <li><a href="#troubleshooting">10. Troubleshooting</a></li>
-        <li><a href="#faq">11. FAQ</a></li>
-      </ul>
+      <ul id="doc-nav"></ul>
     </aside>
 
-    <article>
-      <section id="quickstart">
-        <span class="badge">Documentation · Spec v1.0</span>
-        <h1>agent-fault-check (afc) Docs</h1>
-        <p>
-          Everything you need to install <code>afc</code>, write your first <code>chaos-spec.yaml</code>, wire a deterministic PR merge gate in GitHub Actions, and troubleshoot failures.
-        </p>
-
-        <h2>1. Quickstart &amp; Installation</h2>
-        <p><code>afc</code> ships as a single static binary for Linux (<code>amd64</code>, <code>arm64</code>) and macOS (<code>arm64</code>, <code>amd64</code>), plus multi-arch Docker images.</p>
-
-        <h3>Install OSS Core (Apache-2.0)</h3>
-        <pre><code>VERSION="v0.2.0"
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-TARBALL="afc_${VERSION#v}_${OS}_${ARCH}.tar.gz"
-
-curl -fsSLO "https://github.com/evhu-dev/agent-fault-check/releases/download/${VERSION}/${TARBALL}"
-curl -fsSLO "https://github.com/evhu-dev/agent-fault-check/releases/download/${VERSION}/checksums.txt"
-grep " ${TARBALL}$" checksums.txt | shasum -a 256 -c -
-tar -xzf "${TARBALL}" afc
-sudo install -m 0755 afc /usr/local/bin/afc
-afc version</code></pre>
-
-        <h3>Install Pro / Team Binary <span class="badge-pro">PRO / TEAM</span></h3>
-        <p>Commercial binaries (<code>afc-pro</code>) are hosted publicly at <code>evhu-dev/agent-fault-check-releases</code> and unlock Pro/Team features when <code>AFC_LICENSE_KEY</code> is set.</p>
-        <pre><code>VERSION="v0.2.0"
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-TARBALL="afc-pro_${VERSION#v}_${OS}_${ARCH}.tar.gz"
-
-curl -fsSLO "https://github.com/evhu-dev/agent-fault-check-releases/releases/download/${VERSION}/${TARBALL}"
-curl -fsSLO "https://github.com/evhu-dev/agent-fault-check-releases/releases/download/${VERSION}/checksums.txt"
-grep " ${TARBALL}$" checksums.txt | shasum -a 256 -c -
-tar -xzf "${TARBALL}" afc
-sudo install -m 0755 afc /usr/local/bin/afc
-afc version</code></pre>
-
-        <h3>Docker (GHCR)</h3>
-        <pre><code>docker pull ghcr.io/evhu-dev/agent-fault-check:0.2.0
-docker run --rm -v "$PWD:/work" -w /work ghcr.io/evhu-dev/agent-fault-check:0.2.0 validate --spec chaos-spec.yaml</code></pre>
-
-        <h3>Validate &amp; Run Your First Suite</h3>
-        <pre><code>afc validate --spec chaos-spec.yaml
-afc run --spec chaos-spec.yaml --verbose</code></pre>
-      </section>
-
-      <section id="how-it-works">
-        <h2>2. How the Proxy &amp; Runner Work</h2>
-        <p>For each scenario in <code>chaos-spec.yaml</code>, <code>afc</code> executes a deterministic lifecycle:</p>
-        <ol>
-          <li><strong>Fixture Setup (optional):</strong> Runs <code>fixture.setup_argv</code> to seed or reset disposable test state.</li>
-          <li><strong>Local Fault Proxy:</strong> Starts an ephemeral HTTP reverse proxy on <code>127.0.0.1</code> forwarding to <code>proxy.upstream_url</code>.</li>
-          <li><strong>Agent Execution:</strong> Spawns <code>agent.argv</code> in its own process group with injected environment variables so your agent routes tool calls through the proxy.</li>
-          <li><strong>Fault Injection &amp; Tracing:</strong> Matches configured HTTP requests, injects faults deterministically, and records a full call timeline.</li>
-          <li><strong>Quiesce &amp; Assertions:</strong> Optionally runs <code>fixture.quiesce_argv</code>, then verifies database, Redis, HTTP state, retry, and tool-budget assertions.</li>
-          <li><strong>Teardown &amp; Reporting:</strong> Always runs <code>fixture.teardown_argv</code> (even on timeout), redacts secrets from logs, and writes Console / SARIF / JUnit outputs.</li>
-        </ol>
-
-        <h3>Environment Variables Injected Into Your Agent &amp; Fixture</h3>
-        <table>
-          <thead>
-            <tr><th>Variable</th><th>Description</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>TOOL_API_BASE_URL</code></td><td>Base URL of the local fault-injection proxy (e.g. <code>http://127.0.0.1:54321</code>). Point your agent's tool API client here.</td></tr>
-            <tr><td><code>AFC_RUN_ID</code></td><td>Unique ID generated per scenario execution. Use it to scope test rows/keys cleanly across parallel runs.</td></tr>
-            
-          </tbody>
-        </table>
-      </section>
-
-      <section id="chaos-spec">
-        <h2>3. <code>chaos-spec.yaml</code> Reference</h2>
-        <p>Below is a complete example showing both OSS and Pro options:</p>
-        <pre><code>version: "1.0"
-name: "checkout-recovery"
-
-agent:
-  argv: ["python3", "run_agent.py"]
-  timeout_seconds: 30
-  env:
-    AGENT_MODE: "idempotent"
-  env_allowlist: ["OPENAI_API_KEY"]   # Optional: pass specific host env vars through
-
-fixture:
-  setup_argv: ["python3", "fixture.py", "setup"]
-  quiesce_argv: ["python3", "fixture.py", "quiesce"]
-  teardown_argv: ["python3", "fixture.py", "teardown"]
-
-proxy:
-  transport: "http"
-  listen_addr: "127.0.0.1:0"          # :0 picks an ephemeral free port
-  upstream_url: "http://127.0.0.1:8000"
-  upstream_timeout_ms: 5000
-
-state_stores:
-  orders:
-    type: "postgres"
-    dsn_env: "AFC_TEST_POSTGRES_DSN"
-  cache:                              # Pro / Team
-    type: "redis"
-    url_env: "AFC_TEST_REDIS_URL"
-  ledger:                             # Pro / Team
-    type: "http"
-    base_url: "http://127.0.0.1:8000"
-
-scenarios:
-  - id: "duplicate-write-on-502"
-    prompt: "Create a $49.00 order for customer cust_123."
-    abort_after_tool_calls: 5         # Hard-kill runaway agent loops
-    faults:
-      - id: "lose-first-response"
-        strategy: "commit_then_fail"
-        match:
-          method: "POST"
-          path: "/api/v1/orders"
-          call: 1
-        success:
-          status: 201
-          means_durable_commit: true
-        inject:
-          kind: "http_error"          # or "timeout" with hold_ms: 2500
-          status: 502
-    assertions:
-      - type: "operation_attempts"
-        fault: "lose-first-response"
-        correlation_header: "X-Operation-ID"
-        min_after_injection: 1
-      - type: "sql_row_count"
-        store: "orders"
-        query: "SELECT COUNT(*) FROM orders WHERE run_id = $1 AND customer_id = $2"
-        args: [{ runtime: "run_id" }, "cust_123"]
-        expected: 1
-      - type: "redis_key_absent"      # Pro / Team
-        store: "cache"
-        key: "order:lock:{{run_id}}"
-      - type: "http_state_count"      # Pro / Team
-        store: "ledger"
-        path: "/state/orders?run_id={{run_id}}"
-        expected: 1
-      - type: "max_tool_calls"
-        match: { method: "POST", path: "/api/v1/orders" }
-        max_calls: 3</code></pre>
-
-        <div class="callout">
-          <strong>Runtime placeholders:</strong> In SQL <code>args</code>, pass <code>{ runtime: "run_id" }</code> (parameterized safely via <code>$1</code>). In Redis keys/patterns and HTTP state paths, use <code>{{run_id}}</code>.
-        </div>
-      </section>
-
-      <section id="fault-strategies">
-        <h2>4. Fault Injection Strategies</h2>
-        <table>
-          <thead>
-            <tr><th>Strategy</th><th>Behavior</th><th>What Bugs It Catches</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>commit_then_fail</code></td>
-              <td>Forwards the request to upstream, verifies upstream returned <code>success.status</code> (durable commit), then returns an injected <code>http_error</code> (e.g. <code>502</code>) or <code>timeout</code> (<code>hold_ms</code>) to the agent.</td>
-              <td>Duplicate charges, double orders, missing idempotency keys when retrying after ambiguous failures.</td>
-            </tr>
-            <tr>
-              <td><code>fail_before_upstream</code></td>
-              <td>Immediately returns an injected <code>http_error</code> (e.g. <code>500</code> / <code>503</code>) without calling upstream.</td>
-              <td>Broken saga rollbacks, leaked locks/reservations, unhandled downstream errors.</td>
-            </tr>
-            <tr>
-              <td><code>malformed_json</code></td>
-              <td>Returns HTTP <code>200</code> with truncated/corrupted JSON body to the agent.</td>
-              <td>Unhandled parse crashes, infinite retry loops on corrupt tool payloads.</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="assertions">
-        <h2>5. State &amp; Budget Assertions</h2>
-        <table>
-          <thead>
-            <tr><th>Assertion Type</th><th>Tier</th><th>Purpose</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>sql_row_count</code></td>
-              <td>OSS + Pro</td>
-              <td>Runs a parameterized PostgreSQL <code>SELECT COUNT(*)</code> query and asserts exact <code>expected</code> count.</td>
-            </tr>
-            <tr>
-              <td><code>operation_attempts</code></td>
-              <td>OSS + Pro</td>
-              <td>Verifies the agent actually retried after a fault (using <code>correlation_header</code> and <code>min_after_injection</code>), preventing false passes from agents that silently abort.</td>
-            </tr>
-            <tr>
-              <td><code>max_tool_calls</code></td>
-              <td>OSS + Pro</td>
-              <td>Caps matching proxied HTTP calls (<code>max_calls</code>) to catch retry storms and token-burning loops.</td>
-            </tr>
-            <tr>
-              <td><code>redis_key_absent</code></td>
-              <td>Pro / Team</td>
-              <td>Asserts a Redis key (e.g. distributed lock) does not exist after the run.</td>
-            </tr>
-            <tr>
-              <td><code>redis_key_count</code></td>
-              <td>Pro / Team</td>
-              <td>Uses deduplicated Redis <code>SCAN</code> on <code>pattern</code> and asserts exact <code>expected</code> key count.</td>
-            </tr>
-            <tr>
-              <td><code>http_state_count</code></td>
-              <td>Pro / Team</td>
-              <td>Queries an HTTP state endpoint returning a JSON integer (e.g. <code>1</code>) and asserts exact <code>expected</code> count.</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="cli-reference">
-        <h2>6. CLI Commands &amp; Exit Codes</h2>
-        <table>
-          <thead>
-            <tr><th>Command</th><th>Flags</th><th>Description</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>afc version</code></td>
-              <td>—</td>
-              <td>Prints binary version, edition (<code>-pro</code>), commit hash, and supported spec version.</td>
-            </tr>
-            <tr>
-              <td><code>afc validate</code></td>
-              <td><code>--spec &lt;path&gt;</code></td>
-              <td>Validates <code>chaos-spec.yaml</code> syntax, fault selectors, and assertion fields without running agents.</td>
-            </tr>
-            <tr>
-              <td><code>afc activate</code></td>
-              <td><code>--license-key &lt;key&gt;</code></td>
-              <td>Validates a Polar Pro/Team license key (or reads <code>AFC_LICENSE_KEY</code>) and prints the activated tier.</td>
-            </tr>
-            <tr>
-              <td><code>afc run</code></td>
-              <td><code>--spec</code>, <code>--scenario</code>, <code>--license-key</code>, <code>--sarif</code>, <code>--junit</code>, <code>--verbose</code></td>
-              <td>Executes all scenarios (or one via <code>--scenario</code>) and writes configured reports.</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Exit Codes</h3>
-        <table>
-          <thead>
-            <tr><th>Exit Code</th><th>Meaning</th><th>CI Behavior</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>0</code></td><td>All scenarios and assertions passed.</td><td>PR merge gate passes.</td></tr>
-            <tr><td><code>1</code></td><td>One or more chaos assertions failed, budget exceeded, fault unfired, or agent exited non-zero.</td><td>PR merge gate fails (agent reliability regression).</td></tr>
-            <tr><td><code>2</code></td><td>Config/CLI error, missing/invalid license entitlement, or infrastructure/fixture error.</td><td>Pipeline error (fix config, secrets, or test service).</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="github-action">
-        <h2>7. GitHub Action &amp; CI Merge Gates</h2>
-
-        <h3>OSS Core Workflow (Console Output)</h3>
-        <pre><code>- name: Run agent-fault-check (OSS)
-  uses: evhu-dev/agent-fault-check@v0.2.0
-  with:
-    spec-path: "chaos-spec.yaml"
-    version: "v0.2.0"
-    report-mode: "console"</code></pre>
-
-        <h3>Pro / Team Workflow (SARIF Code Scanning + JUnit) <span class="badge-pro">PRO / TEAM</span></h3>
-        <pre><code>permissions:
-  contents: read
-  security-events: write
-
-steps:
-  - uses: actions/checkout@v4
-
-  - name: Run agent-fault-check Pro
-    id: afc
-    uses: evhu-dev/agent-fault-check@v0.2.0
-    with:
-      spec-path: "chaos-spec.yaml"
-      version: "v0.2.0"
-      release-repository: "evhu-dev/agent-fault-check-releases"
-      license-key: ${{ secrets.AFC_LICENSE_KEY }}
-      report-mode: "both"
-
-  - name: Upload SARIF to GitHub Code Scanning
-    if: always() &amp;&amp; steps.afc.outputs.sarif-file != ''
-    uses: github/codeql-action/upload-sarif@v3
-    with:
-      sarif_file: ${{ steps.afc.outputs.sarif-file }}</code></pre>
-
-        <h3>Action Inputs &amp; Outputs</h3>
-        <table>
-          <thead>
-            <tr><th>Name</th><th>Kind</th><th>Description</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>spec-path</code></td><td>Input</td><td>Path to <code>chaos-spec.yaml</code> (default: <code>chaos-spec.yaml</code>).</td></tr>
-            <tr><td><code>version</code></td><td>Input (required)</td><td>Pinned release tag (e.g. <code>v0.2.0</code>).</td></tr>
-            <tr><td><code>report-mode</code></td><td>Input</td><td><code>console</code> (OSS) or <code>sarif</code>, <code>junit</code>, <code>both</code> (requires <code>release-repository</code>).</td></tr>
-            <tr><td><code>release-repository</code></td><td>Input</td><td>Set to <code>evhu-dev/agent-fault-check-releases</code> to download Pro binaries.</td></tr>
-            <tr><td><code>license-key</code></td><td>Input</td><td>Your Polar license key from <code>${{ secrets.AFC_LICENSE_KEY }}</code>.</td></tr>
-            <tr><td><code>exit-code</code></td><td>Output</td><td>CLI exit code (<code>0</code>, <code>1</code>, or <code>2</code>).</td></tr>
-            <tr><td><code>sarif-file</code> / <code>junit-file</code></td><td>Output</td><td>Paths to generated <code>afc-results.sarif</code> and <code>afc-results.xml</code>.</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="sarif-rules">
-        <h2>8. SARIF 2.1.0 Rule Reference <span class="badge-pro">PRO / TEAM</span></h2>
-        <p>Each SARIF finding includes deterministic fingerprints, remediation markdown, and execution timelines for GitHub Security / PR annotations:</p>
-        <table>
-          <thead>
-            <tr><th>Rule ID</th><th>Name</th><th>Meaning</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>AFC101</code></td><td><code>PersistentStateMismatch</code></td><td>Post-run Postgres, Redis, or HTTP state did not match expected count (duplicate write or leaked rollback state).</td></tr>
-            <tr><td><code>AFC102</code></td><td><code>MissingRetryAfterFault</code></td><td>Agent did not retry after an injected fault using the expected correlation header.</td></tr>
-            <tr><td><code>AFC103</code></td><td><code>ToolCallBudgetExceeded</code></td><td>Agent exceeded <code>max_tool_calls</code> or hit <code>abort_after_tool_calls</code>.</td></tr>
-            <tr><td><code>AFC104</code></td><td><code>DeclaredFaultUnfired</code></td><td>A declared fault rule never matched any proxied HTTP request.</td></tr>
-            <tr><td><code>AFC105</code></td><td><code>AgentExecutionFailed</code></td><td>Agent process exited non-zero or exceeded <code>timeout_seconds</code>.</td></tr>
-            <tr><td><code>AFC201</code></td><td><code>ChaosRunnerInfraError</code></td><td>Fixture hook, state store connection, proxy drain, or upstream verification error.</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="licensing">
-        <h2>9. Pro &amp; Team Licensing</h2>
-        <ul>
-          <li><strong>Purchase &amp; Key Delivery:</strong> Subscribe on <a href="./#pricing">Pro or Team</a> via Polar.sh. Your license key (<code>AFCPRO-...</code> or <code>AFCTEAM-...</code>) is issued immediately in the Polar Customer Portal and confirmation email.</li>
-          <li><strong>Pass via Environment Variable (Recommended):</strong> Set <code>AFC_LICENSE_KEY</code> in your shell or GitHub Actions repository secret (<code>${{ secrets.AFC_LICENSE_KEY }}</code>). Avoid hardcoding keys in <code>chaos-spec.yaml</code> or workflow files.</li>
-          <li><strong>Automatic Secret Redaction:</strong> <code>afc</code> automatically redacts <code>AFCPRO-*</code>, <code>AFCTEAM-*</code>, Bearer tokens, and common API keys from captured agent <code>stderr</code> and reports.</li>
-          <li><strong>Test Your Key:</strong> Run <code>AFC_LICENSE_KEY="AFCPRO-..." afc activate</code> to verify connectivity to Polar and confirm your active tier.</li>
-        </ul>
-      </section>
-
-      <section id="troubleshooting">
-        <h2>10. Troubleshooting</h2>
-
-        <h3><code>AFC104: Declared fault never fired</code></h3>
-        <p>Your agent did not send a request matching <code>faults[].match</code> through the proxy. Check:</p>
-        <ul>
-          <li>Your agent's HTTP client reads <code>TOOL_API_BASE_URL</code> as its base URL (not hardcoded <code>localhost:8000</code>).</li>
-          <li><code>match.method</code> (e.g. <code>POST</code>), <code>match.path</code> (exact path without query string), and <code>match.call</code> (1-indexed) match what appears in the call timeline with <code>--verbose</code>.</li>
-        </ul>
-
-        <h3><code>commit_then_fail</code> fails with upstream status mismatch (<code>AFC201</code>)</h3>
-        <p><code>commit_then_fail</code> verifies the upstream API actually committed (returned <code>success.status</code>, e.g. <code>201</code>) before injecting the fault. If your upstream returns <code>200</code> instead of <code>201</code>, update <code>success.status: 200</code>.</p>
-
-        <h3><code>report-mode 'sarif' is not supported by the public OSS release</code></h3>
-        <p>In the GitHub Action, SARIF and JUnit require the Pro binary. Set <code>release-repository: "evhu-dev/agent-fault-check-releases"</code> and provide <code>license-key: ${{ secrets.AFC_LICENSE_KEY }}</code>.</p>
-
-        <h3><code>entitlement error: license key rejected by Polar (HTTP 404)</code></h3>
-        <p>Verify the key has no trailing whitespace/newlines, belongs to an active Pro or Team subscription in the Polar Customer Portal, and that your runner has outbound HTTPS access to <code>api.polar.sh</code>.</p>
-
-        <h3>Postgres or Redis connection refused in CI</h3>
-        <p>Ensure your CI service container has a healthcheck (e.g. <code>pg_isready</code> / <code>redis-cli ping</code>) and that <code>dsn_env</code> / <code>url_env</code> matches the exact environment variable exported to the step.</p>
-      </section>
-
-      <section id="faq">
-        <h2>11. Frequently Asked Questions</h2>
-
-        <details open>
-          <summary>Does agent-fault-check work with any AI agent framework or language?</summary>
-          <p>Yes. <code>afc</code> is completely framework- and language-agnostic. It launches your agent via <code>agent.argv</code> (Python, TypeScript/Node, Go, Java, etc.) and intercepts standard HTTP tool calls via <code>TOOL_API_BASE_URL</code>. It works with LangGraph, CrewAI, OpenAI Agents SDK, Anthropic SDK, AutoGen, or custom loops.</p>
-        </details>
-
-        <details>
-          <summary>Does afc call my LLM or replace my LLM mocks?</summary>
-          <p>No. <code>afc</code> only proxies the HTTP tool APIs you point at <code>TOOL_API_BASE_URL</code>. You can run against a real LLM or a deterministic stubbed LLM depending on your CI budget.</p>
-        </details>
-
-        <details>
-          <summary>Should I point afc at a production database?</summary>
-          <p><strong>Never.</strong> Always run <code>afc</code> against disposable local or CI service containers (such as GitHub Actions Postgres/Redis service containers or local Docker Compose).</p>
-        </details>
-
-        <details>
-          <summary>Does the CLI collect telemetry or upload my code/prompts?</summary>
-          <p>No. Both <code>afc</code> and <code>afc-pro</code> collect zero usage telemetry and never transmit prompts, source code, HTTP payloads, or database contents. Pro license validation contacts <code>api.polar.sh</code> solely to verify your license key.</p>
-        </details>
-
-        <details>
-          <summary>What is the difference between the OSS and Pro binaries?</summary>
-          <p>The OSS binary (<code>afc</code>, Apache-2.0) supports up to 3 scenarios per run, all HTTP fault strategies, PostgreSQL + budget assertions, and console output. The Pro binary (<code>afc-pro</code>) adds unlimited scenarios, Redis and HTTP state assertions, and SARIF 2.1.0 + JUnit XML reporting.</p>
-        </details>
-
-        <details>
-          <summary>How do billing, upgrades, cancellations, and refunds work?</summary>
-          <p>All billing is handled by Polar.sh (Merchant of Record). You can upgrade, download invoices, or cancel anytime in the Polar Customer Portal. New Pro and Team subscriptions include a 14-day refund policy—see <a href="./terms.html">Commercial Terms &amp; Refunds</a>.</p>
-        </details>
-
-        <details>
-          <summary>Need help or found a bug?</summary>
-          <p>Open an issue on <a href="https://github.com/evhu-dev/agent-fault-check/issues">GitHub Issues</a> or email <a href="mailto:support@evhu.net">support@evhu.net</a>.</p>
-        </details>
-      </section>
-    </article>
+    <main id="doc-content">
+      <div id="md-body" class="md-body"><p>Loading documentation…</p></div>
+      <div class="doc-footer-nav">
+        <a id="edit-gh-link" href="https://github.com/evhu-dev/agent-fault-check/tree/main/docs/content" target="_blank" rel="noopener">Edit this page on GitHub ↗</a>
+        <div class="doc-pager" id="doc-pager"></div>
+      </div>
+    </main>
   </div>
 
   <footer>
@@ -693,5 +283,130 @@ steps:
       </div>
     </div>
   </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+  <script>
+    (function () {
+      const PAGES = [
+        { slug: "quickstart", title: "1. Quickstart & Install" },
+        { slug: "how-it-works", title: "2. How the Proxy Works" },
+        { slug: "chaos-spec", title: "3. chaos-spec.yaml Reference" },
+        { slug: "faults-and-assertions", title: "4. Faults & Assertions" },
+        { slug: "cli-reference", title: "5. CLI & Exit Codes" },
+        { slug: "github-action", title: "6. GitHub Action & CI" },
+        { slug: "sarif-rules", title: "7. SARIF Rules (AFC101–201)" },
+        { slug: "licensing", title: "8. Pro & Team Licensing" },
+        { slug: "troubleshooting", title: "9. Troubleshooting" },
+        { slug: "faq", title: "10. FAQ" }
+      ];
+
+      const HASH_ALIASES = {
+        "fault-strategies": "faults-and-assertions",
+        "assertions": "faults-and-assertions"
+      };
+
+      let latestRelease = { tag: "v0.2.0", url: "https://github.com/evhu-dev/agent-fault-check/releases/latest" };
+
+      async function fetchLatestRelease() {
+        const cacheKey = "afc_latest_release_v1";
+        try {
+          const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+          if (cached && (Date.now() - cached.ts) < 600000) {
+            latestRelease = { tag: cached.tag, url: cached.url };
+            applyReleaseBadges();
+            return;
+          }
+        } catch (_) {}
+        try {
+          const res = await fetch("https://api.github.com/repos/evhu-dev/agent-fault-check/releases/latest");
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.tag_name) {
+              latestRelease = { tag: data.tag_name, url: data.html_url || latestRelease.url };
+              try {
+                sessionStorage.setItem(cacheKey, JSON.stringify({ ...latestRelease, ts: Date.now() }));
+              } catch (_) {}
+              applyReleaseBadges();
+            }
+          }
+        } catch (_) {}
+      }
+
+      function applyReleaseBadges() {
+        document.querySelectorAll("[data-release-tag]").forEach(el => { el.textContent = latestRelease.tag; });
+        document.querySelectorAll("[data-release-link]").forEach(el => { el.href = latestRelease.url; });
+      }
+
+      function resolveSlug() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = (params.get("page") || window.location.hash.replace(/^#/, "") || "quickstart").toLowerCase();
+        const mapped = HASH_ALIASES[raw] || raw;
+        return PAGES.some(p => p.slug === mapped) ? mapped : "quickstart";
+      }
+
+      function buildSidebar(activeSlug) {
+        const nav = document.getElementById("doc-nav");
+        nav.innerHTML = PAGES.map(p =>
+          `<li><a href="?page=${p.slug}" data-slug="${p.slug}" class="${p.slug === activeSlug ? "current" : ""}">${p.title}</a></li>`
+        ).join("");
+        nav.querySelectorAll("a").forEach(a => {
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            const slug = a.getAttribute("data-slug");
+            history.pushState({}, "", `?page=${slug}`);
+            loadPage(slug);
+          });
+        });
+      }
+
+      function renderMarkdown(md) {
+        const ver = latestRelease.tag;
+        const verNum = ver.replace(/^v/, "");
+        const interpolated = md.replaceAll("{{VERSION}}", ver).replaceAll("{{VERSION_NUM}}", verNum);
+        if (window.marked && typeof window.marked.parse === "function") {
+          return window.marked.parse(interpolated, { gfm: true, breaks: false });
+        }
+        return `<pre>${interpolated.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]))}</pre>`;
+      }
+
+      async function loadPage(slug) {
+        buildSidebar(slug);
+        const bodyEl = document.getElementById("md-body");
+        const editEl = document.getElementById("edit-gh-link");
+        const pagerEl = document.getElementById("doc-pager");
+        editEl.href = `https://github.com/evhu-dev/agent-fault-check/blob/main/docs/content/${slug}.md`;
+
+        const idx = PAGES.findIndex(p => p.slug === slug);
+        const prev = idx > 0 ? PAGES[idx - 1] : null;
+        const next = idx < PAGES.length - 1 ? PAGES[idx + 1] : null;
+        pagerEl.innerHTML =
+          (prev ? `<a class="pager-btn" href="?page=${prev.slug}" data-nav-slug="${prev.slug}">← ${prev.title}</a>` : "") +
+          (next ? `<a class="pager-btn" href="?page=${next.slug}" data-nav-slug="${next.slug}">${next.title} →</a>` : "");
+        pagerEl.querySelectorAll("a").forEach(a => {
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            const target = a.getAttribute("data-nav-slug");
+            history.pushState({}, "", `?page=${target}`);
+            loadPage(target);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+        });
+
+        try {
+          const res = await fetch(`./content/${slug}.md`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const md = await res.text();
+          bodyEl.innerHTML = renderMarkdown(md);
+          const pageMeta = PAGES[idx];
+          if (pageMeta) document.title = `${pageMeta.title.replace(/^\d+\.\s*/, "")} — agent-fault-check Docs`;
+        } catch (err) {
+          bodyEl.innerHTML = `<p>Failed to load <code>docs/content/${slug}.md</code> (${err.message}).</p>`;
+        }
+      }
+
+      window.addEventListener("popstate", () => loadPage(resolveSlug()));
+      fetchLatestRelease().finally(() => loadPage(resolveSlug()));
+    })();
+  </script>
 </body>
 </html>
