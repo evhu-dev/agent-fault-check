@@ -183,10 +183,30 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - name: Extract curated release notes from approval issue
+        id: notes
+        if: needs.prepare.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ needs.prepare.outputs.issue_number }}
+        run: |
+          set -euo pipefail
+          BODY=$(gh issue view "${ISSUE_NUMBER}" --repo "${GITHUB_REPOSITORY}" --json body --jq '.body')
+          python3 - "${BODY}" <<'PY' > /tmp/release-notes.md
+          import re, sys
+          m = re.search(r'<!--\s*release-notes:start\s*-->(.*?)<!--\s*release-notes:end\s*-->', sys.argv[1], re.S)
+          if m and m.group(1).strip():
+              print(m.group(1).strip())
+          PY
+          if [ -s /tmp/release-notes.md ]; then
+            echo "args=release --clean --release-notes=/tmp/release-notes.md" >> "${GITHUB_OUTPUT}"
+          else
+            echo "args=release --clean" >> "${GITHUB_OUTPUT}"
+          fi
       - uses: goreleaser/goreleaser-action@v7
         with:
           version: v2.8.2
-          args: release --clean
+          args: ${{ steps.notes.outputs.args || 'release --clean' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AFC_UPGRADE_URL: ${{ secrets.AFC_UPGRADE_URL }}

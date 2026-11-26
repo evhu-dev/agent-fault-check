@@ -38,3 +38,26 @@ archives:
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
+
+changelog:
+  sort: asc
+  use: git
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Improvements
+      order: 2
+  filters:
+    exclude:
+      - '(?i)^merge '
+      - '(?i)^ci(\([^)]*\))?:'
+      - '(?i)^chore(\([^)]*\))?:'
+      - '(?i)^test(\([^)]*\))?:'
+      - '(?i)^docs(\([^)]*\))?:'
+      - '(?i)^style(\([^)]*\))?:'
+      - '(?i)^build(\([^)]*\))?:'
+      - '(?i)^refactor(\([^)]*\))?:'

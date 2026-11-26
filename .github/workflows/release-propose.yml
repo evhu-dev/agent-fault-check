@@ -40,9 +40,10 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Calculate next semantic version
+      - name: Calculate next version and draft concise release notes
         id: calc
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BUMP_OVERRIDE: ${{ inputs.bump || 'auto' }}
         run: |
           set -euo pipefail
@@ -63,13 +64,22 @@ jobs:
             exit 0
           fi
 
-          # Determine semver bump from Conventional Commits unless overridden
+          # Filter out non-functional/internal commits for public release notes
+          INTERNAL_RE='^(ci|chore|docs|test|style|build|refactor)(\([^)]+\))?:|^Merge '
+          FUNCTIONAL_SUBJECTS=$(git log "${RANGE}" --no-merges --format='%s' | grep -Eiv "${INTERNAL_RE}" || true)
+
+          if [ -z "${FUNCTIONAL_SUBJECTS}" ] && [ "${EVENT_NAME}" != "workflow_dispatch" ]; then
+            echo "has_changes=false" >> "${GITHUB_OUTPUT}"
+            echo "Only internal/CI/docs commits since ${LAST_TAG}; skipping automatic release proposal."
+            exit 0
+          fi
+
           BUMP="${BUMP_OVERRIDE}"
           if [ "${BUMP}" = "auto" ]; then
             BUMP="patch"
             if git log "${RANGE}" --format='%s%n%b' | grep -Eq '(^BREAKING CHANGE:|^BREAKING-CHANGE:|^[a-z]+(\([^)]+\))?!:)'; then
               BUMP="major"
-            elif git log "${RANGE}" --format='%s' | grep -Eq '^feat(\([^)]+\))?:'; then
+            elif printf '%s\n' "${FUNCTIONAL_SUBJECTS}" | grep -Eq '^feat(\([^)]+\))?:'; then
               BUMP="minor"
             fi
           fi
@@ -96,6 +106,47 @@ jobs:
           esac
 
           NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+
+          # Build short, clean, functionality-focused release notes (no hashes, no internal noise)
+          python3 - "${FUNCTIONAL_SUBJECTS}" <<'PY' > /tmp/release_notes.md
+          import re, sys
+
+          subjects = [line.strip() for line in sys.argv[1].splitlines() if line.strip()]
+          feats, fixes, other = [], [], []
+          cc_re = re.compile(r'^(?P<type>[a-zA-Z]+)(?:\((?P<scope>[^)]+)\))?(?P<bang>!)?:\s*(?P<desc>.+)$')
+
+          for s in subjects:
+              m = cc_re.match(s)
+              if m:
+                  t = m.group('type').lower()
+                  scope = m.group('scope')
+                  desc = m.group('desc').strip()
+                  desc = desc[0].upper() + desc[1:] if desc else desc
+                  bullet = f"- **{scope}:** {desc}" if scope else f"- {desc}"
+                  if t == 'feat':
+                      feats.append(bullet)
+                  elif t == 'fix':
+                      fixes.append(bullet)
+                  else:
+                      other.append(bullet)
+              else:
+                  desc = s[0].upper() + s[1:]
+                  other.append(f"- {desc}")
+
+          sections = []
+          if feats:
+              sections.append("### Features\n" + "\n".join(feats))
+          if fixes:
+              sections.append("### Bug Fixes\n" + "\n".join(fixes))
+          if other:
+              sections.append("### Improvements\n" + "\n".join(other))
+
+          if not sections:
+              print("Maintenance release with stability and packaging improvements.")
+          else:
+              print("\n\n".join(sections))
+          PY
+
           {
             echo "has_changes=true"
             echo "last_tag=${LAST_TAG}"
@@ -104,9 +155,7 @@ jobs:
             echo "head_sha=${HEAD_SHA}"
             echo "commit_count=${COMMIT_COUNT}"
           } >> "${GITHUB_OUTPUT}"
-
-          git log "${RANGE}" --no-merges --pretty=format:'- `%h` %s (%an)' > /tmp/release_commits.md
-          echo "Proposed release: ${NEXT_TAG} (${BUMP} bump from ${LAST_TAG}, ${COMMIT_COUNT} commits)"
+          echo "Proposed release: ${NEXT_TAG} (${BUMP} bump from ${LAST_TAG})"
 
       - name: Ensure release-approval label exists
         if: steps.calc.outputs.has_changes == 'true'
@@ -130,7 +179,7 @@ jobs:
           COMMIT_COUNT: ${{ steps.calc.outputs.commit_count }}
         run: |
           set -euo pipefail
-          COMMITS=$(cat /tmp/release_commits.md)
+          NOTES=$(cat /tmp/release_notes.md)
           TITLE="Release approval: ${NEXT_TAG}"
 
           cat <<EOF > /tmp/issue_body.md
@@ -143,17 +192,17 @@ jobs:
           - **Proposed version:** \`${NEXT_TAG}\` (\`${BUMP}\` bump)
           - **Target commit:** \`${HEAD_SHA}\` (${COMMIT_COUNT} commit(s) since \`${LAST_TAG}\`)
 
-          ### Commits Included
-          ${COMMITS}
+          ### Public Release Notes *(editable before approving)*
+          <!-- release-notes:start -->
+          ${NOTES}
+          <!-- release-notes:end -->
 
           ---
 
           ### How to Approve
-          Comment on this issue with one of:
+          Review (and optionally edit) the **Public Release Notes** above, then comment:
           - \`/approve\` — tag and publish **\`${NEXT_TAG}\`**
-          - \`/approve patch\` — override and publish next **patch** version
-          - \`/approve minor\` — override and publish next **minor** version
-          - \`/approve major\` — override and publish next **major** version
+          - \`/approve patch\` | \`/approve minor\` | \`/approve major\` — override version bump
           - \`/approve vX.Y.Z\` — override with an explicit semver tag
 
           Only \`@evhu-dev\` (repository owner) can approve. Close this issue to cancel.
